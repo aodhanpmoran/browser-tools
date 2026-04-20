@@ -1,0 +1,25 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+}
+
+body {
+  margin: 0;
+  min-width: 280px;
+}
+
+main {
+  padding: 12px 16px;
+}
+
+h1 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+
+p {
+  margin: 0;
+  color: color-mix(in srgb, currentColor 70%, transparent);
+}

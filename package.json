@@ -1,0 +1,24 @@
+{
+  "name": "browser-tools",
+  "version": "0.0.1",
+  "description": "Personal Chrome extension: tab cleaner, cookie editor, redirect tracer, video speed, news feed eradicator.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@crxjs/vite-plugin": "^2.4.0",
+    "@types/chrome": "^0.1.40",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.9",
+    "vitest": "^4.1.4"
+  },
+  "license": "MIT",
+  "author": "Aodhán P Moran"
+}
