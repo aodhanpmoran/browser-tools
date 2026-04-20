@@ -6,7 +6,7 @@ import {
   tabCleanerHandlers,
 } from '../features/tab-cleaner';
 import { cookieEditorFeature } from '../features/cookie-editor';
-import { redirectTracerFeature } from '../features/redirect-tracer';
+import { redirectTracerFeature, redirectTracerHandlers } from '../features/redirect-tracer';
 import { videoSpeedFeature } from '../features/video-speed';
 import { newsFeedEradicatorFeature } from '../features/news-feed-eradicator';
 
@@ -50,7 +50,29 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 
 chrome.tabs.onRemoved.addListener((tabId) => {
   tabCleanerHandlers.onTabRemoved(tabId);
+  redirectTracerHandlers.onTabRemoved(tabId);
 });
+
+chrome.webRequest.onBeforeRequest.addListener(
+  (details) => {
+    void redirectTracerHandlers.onBeforeRequest(details);
+  },
+  { urls: ['http://*/*', 'https://*/*'], types: ['main_frame'] },
+);
+
+chrome.webRequest.onBeforeRedirect.addListener(
+  (details) => {
+    void redirectTracerHandlers.onBeforeRedirect(details);
+  },
+  { urls: ['http://*/*', 'https://*/*'], types: ['main_frame'] },
+);
+
+chrome.webRequest.onCompleted.addListener(
+  (details) => {
+    void redirectTracerHandlers.onCompleted(details);
+  },
+  { urls: ['http://*/*', 'https://*/*'], types: ['main_frame'] },
+);
 
 chrome.runtime.onMessage.addListener((message, sender, _sendResponse) => {
   if (isDirtyInputMessage(message)) {

@@ -2,12 +2,15 @@ import { FEATURE_IDS, FEATURE_META, type FeatureId } from '../shared/feature';
 import { getSettings, setFeatureEnabled } from '../shared/storage';
 import { getClosed, type ClosedTab } from '../features/tab-cleaner/recently-closed';
 import { listForUrl, nukeSite } from '../features/cookie-editor/operations';
+import { currentChain, type RedirectChain } from '../features/redirect-tracer/chains';
 
 const listEl = document.querySelector<HTMLUListElement>('#feature-list');
 const recentEl = document.querySelector<HTMLUListElement>('#recently-closed');
 const recentSection = document.querySelector<HTMLElement>('#recently-closed-section');
 const cookiesSection = document.querySelector<HTMLElement>('#cookies-section');
 const cookiesSummary = document.querySelector<HTMLElement>('#cookies-summary');
+const redirectSection = document.querySelector<HTMLElement>('#redirect-section');
+const redirectSummary = document.querySelector<HTMLElement>('#redirect-summary');
 const optionsButton = document.querySelector<HTMLButtonElement>('#open-options');
 
 if (!listEl) throw new Error('#feature-list not found');
@@ -15,6 +18,8 @@ if (!recentEl) throw new Error('#recently-closed not found');
 if (!recentSection) throw new Error('#recently-closed-section not found');
 if (!cookiesSection) throw new Error('#cookies-section not found');
 if (!cookiesSummary) throw new Error('#cookies-summary not found');
+if (!redirectSection) throw new Error('#redirect-section not found');
+if (!redirectSummary) throw new Error('#redirect-summary not found');
 if (!optionsButton) throw new Error('#open-options not found');
 
 optionsButton.addEventListener('click', () => {
@@ -36,6 +41,7 @@ async function render(): Promise<void> {
   renderFeatures(settings.enabled);
   renderRecentlyClosed(closed, settings.enabled['tab-cleaner']);
   await renderCookies(activeTab, settings.enabled['cookie-editor']);
+  await renderRedirects(activeTab, settings.enabled['redirect-tracer']);
 }
 
 async function getActiveTab(): Promise<chrome.tabs.Tab | undefined> {
@@ -175,6 +181,64 @@ async function renderCookies(
 
 function isEditableUrl(url: string): boolean {
   return /^https?:\/\//.test(url);
+}
+
+async function renderRedirects(
+  tab: chrome.tabs.Tab | undefined,
+  tracerOn: boolean,
+): Promise<void> {
+  if (!tracerOn || tab?.id === undefined) {
+    redirectSection!.hidden = true;
+    return;
+  }
+  const chain = await currentChain(tab.id);
+  if (!chain || chain.entries.length <= 1) {
+    redirectSection!.hidden = true;
+    return;
+  }
+  redirectSection!.hidden = false;
+  redirectSummary!.replaceChildren(renderChain(chain));
+}
+
+function renderChain(chain: RedirectChain): HTMLElement {
+  const list = document.createElement('ol');
+  list.className = 'redirect-list';
+  for (const entry of chain.entries) {
+    const li = document.createElement('li');
+    li.className = 'redirect-entry';
+    const status = document.createElement('span');
+    status.className = 'redirect-status';
+    status.textContent = entry.statusCode ? String(entry.statusCode) : '—';
+    const url = document.createElement('span');
+    url.className = 'redirect-url';
+    url.textContent = entry.url;
+    url.title = entry.url;
+    li.append(status, url);
+    list.append(li);
+  }
+
+  const actions = document.createElement('div');
+  actions.className = 'redirect-actions';
+  const copyBtn = document.createElement('button');
+  copyBtn.type = 'button';
+  copyBtn.className = 'secondary-button';
+  copyBtn.textContent = 'Copy chain';
+  copyBtn.addEventListener('click', () => {
+    const text = chain.entries
+      .map((e) => `${e.statusCode ?? '—'} ${e.url}`)
+      .join('\n');
+    void navigator.clipboard.writeText(text).then(() => {
+      copyBtn.textContent = 'Copied';
+      setTimeout(() => {
+        copyBtn.textContent = 'Copy chain';
+      }, 1200);
+    });
+  });
+  actions.append(copyBtn);
+
+  const wrap = document.createElement('div');
+  wrap.append(list, actions);
+  return wrap;
 }
 
 function formatAge(ms: number): string {

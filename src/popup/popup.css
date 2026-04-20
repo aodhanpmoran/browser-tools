@@ -207,3 +207,55 @@ h1 {
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+.redirect-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 4px;
+}
+
+.redirect-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.redirect-entry {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 3px;
+}
+
+.redirect-entry:nth-child(even) {
+  background: color-mix(in srgb, CanvasText 3%, transparent);
+}
+
+.redirect-status {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  text-align: right;
+}
+
+.redirect-url {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.redirect-actions {
+  display: flex;
+  justify-content: flex-end;
+}

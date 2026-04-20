@@ -2,6 +2,7 @@ import { FEATURE_IDS, FEATURE_META, type FeatureId } from '../shared/feature';
 import { getSettings, patchSettings, setFeatureEnabled } from '../shared/storage';
 import { SITE_RULES } from '../features/news-feed-eradicator/rules';
 import { renderCookieEditorPanel } from '../features/cookie-editor/options-panel';
+import { clearAll as clearAllChains } from '../features/redirect-tracer/chains';
 
 const navEl = document.querySelector<HTMLElement>('#feature-nav');
 const panelEl = document.querySelector<HTMLElement>('#feature-panel');
@@ -100,27 +101,60 @@ async function renderDetails(id: FeatureId, enabled: boolean): Promise<HTMLEleme
     case 'cookie-editor':
       return renderCookieEditorPanel(enabled);
     case 'redirect-tracer':
-      return placeholder(placeholderText(id));
+      return renderRedirectTracerPanel(enabled);
   }
 }
 
-function placeholder(text: string): HTMLElement {
-  const p = document.createElement('p');
-  p.className = 'placeholder';
-  p.textContent = text;
-  return p;
-}
+async function renderRedirectTracerPanel(featureEnabled: boolean): Promise<HTMLElement> {
+  const settings = await getSettings();
+  const { bufferSize } = settings.redirectTracer;
 
-function placeholderText(id: FeatureId): string {
-  switch (id) {
-    case 'redirect-tracer':
-      return 'Buffer size and clear controls appear in milestone M6.';
-    case 'video-speed':
-    case 'news-feed-eradicator':
-    case 'tab-cleaner':
-    case 'cookie-editor':
-      return '';
-  }
+  const root = document.createElement('section');
+  root.className = 'rt-panel';
+
+  const subhead = document.createElement('h3');
+  subhead.className = 'subheader';
+  subhead.textContent = 'Buffer size per tab';
+
+  const row = document.createElement('div');
+  row.className = 'range-row';
+  const range = document.createElement('input');
+  range.type = 'range';
+  range.min = '5';
+  range.max = '100';
+  range.step = '5';
+  range.value = String(bufferSize);
+  range.disabled = !featureEnabled;
+  const readout = document.createElement('output');
+  readout.className = 'range-readout';
+  readout.textContent = `${bufferSize}`;
+  range.addEventListener('input', () => {
+    readout.textContent = `${range.value}`;
+  });
+  range.addEventListener('change', () => {
+    void patchSettings({
+      redirectTracer: { bufferSize: Number.parseInt(range.value, 10) },
+    });
+  });
+  row.append(range, readout);
+
+  const clearBtn = document.createElement('button');
+  clearBtn.type = 'button';
+  clearBtn.className = 'danger-button';
+  clearBtn.textContent = 'Clear all captured chains';
+  clearBtn.disabled = !featureEnabled;
+  clearBtn.addEventListener('click', () => {
+    if (!confirm('Clear all captured redirect chains from every tab?')) return;
+    void clearAllChains();
+  });
+
+  const note = document.createElement('p');
+  note.className = 'muted-note';
+  note.textContent =
+    'Captures top-frame redirects only. Stored in chrome.storage.session — cleared on browser restart.';
+
+  root.append(subhead, row, clearBtn, note);
+  return root;
 }
 
 async function renderTabCleanerPanel(featureEnabled: boolean): Promise<HTMLElement> {
