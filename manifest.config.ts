@@ -7,6 +7,7 @@ export default defineManifest({
   name: 'Browser Tools',
   version: pkg.version,
   description: pkg.description,
+  minimum_chrome_version: '111',
   action: {
     default_popup: 'src/popup/index.html',
     default_title: 'Browser Tools',
@@ -23,6 +24,31 @@ export default defineManifest({
       matches: allHostPatterns(),
       js: ['src/features/news-feed-eradicator/content.ts'],
       run_at: 'document_start',
+    },
+    {
+      matches: ['http://*/*', 'https://*/*', 'file:///*'],
+      all_frames: true,
+      match_about_blank: true,
+      exclude_matches: [
+        'https://hangouts.google.com/*',
+        'https://meet.google.com/*',
+      ],
+      js: ['src/features/video-speed/upstream/src/entries/content-bridge.js'],
+      run_at: 'document_start',
+      world: 'ISOLATED',
+    },
+    {
+      matches: ['http://*/*', 'https://*/*', 'file:///*'],
+      all_frames: true,
+      match_about_blank: true,
+      exclude_matches: [
+        'https://hangouts.google.com/*',
+        'https://meet.google.com/*',
+      ],
+      css: ['src/features/video-speed/upstream/src/styles/inject.css'],
+      js: ['src/features/video-speed/upstream/src/entries/inject-entry.js'],
+      run_at: 'document_idle',
+      world: 'MAIN',
     },
   ],
 });

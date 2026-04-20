@@ -19,5 +19,5 @@
     "jsx": "preserve"
   },
   "include": ["src/**/*.ts", "src/**/*.html", "manifest.config.ts", "vite.config.ts", "tests/**/*.ts"],
-  "exclude": ["node_modules", "dist", "src/features/video-speed", "src/features/news-feed-eradicator"]
+  "exclude": ["node_modules", "dist", "src/features/video-speed/upstream"]
 }
