@@ -1,6 +1,6 @@
 {
   "name": "browser-tools",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Personal Chrome extension: tab cleaner, cookie editor, redirect tracer, video speed, news feed eradicator.",
   "private": true,
   "type": "module",
