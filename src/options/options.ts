@@ -1,6 +1,7 @@
 import { FEATURE_IDS, FEATURE_META, type FeatureId } from '../shared/feature';
 import { getSettings, patchSettings, setFeatureEnabled } from '../shared/storage';
 import { SITE_RULES } from '../features/news-feed-eradicator/rules';
+import { renderCookieEditorPanel } from '../features/cookie-editor/options-panel';
 
 const navEl = document.querySelector<HTMLElement>('#feature-nav');
 const panelEl = document.querySelector<HTMLElement>('#feature-panel');
@@ -97,6 +98,7 @@ async function renderDetails(id: FeatureId, enabled: boolean): Promise<HTMLEleme
     case 'tab-cleaner':
       return renderTabCleanerPanel(enabled);
     case 'cookie-editor':
+      return renderCookieEditorPanel(enabled);
     case 'redirect-tracer':
       return placeholder(placeholderText(id));
   }
@@ -111,15 +113,12 @@ function placeholder(text: string): HTMLElement {
 
 function placeholderText(id: FeatureId): string {
   switch (id) {
-    case 'tab-cleaner':
-      return 'Threshold, allowlist, and exclusion controls appear in milestone M4.';
-    case 'cookie-editor':
-      return 'Cookie table and nuke controls appear in milestone M5.';
     case 'redirect-tracer':
       return 'Buffer size and clear controls appear in milestone M6.';
     case 'video-speed':
     case 'news-feed-eradicator':
     case 'tab-cleaner':
+    case 'cookie-editor':
       return '';
   }
 }

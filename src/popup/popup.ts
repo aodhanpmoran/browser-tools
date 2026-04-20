@@ -1,15 +1,20 @@
 import { FEATURE_IDS, FEATURE_META, type FeatureId } from '../shared/feature';
 import { getSettings, setFeatureEnabled } from '../shared/storage';
 import { getClosed, type ClosedTab } from '../features/tab-cleaner/recently-closed';
+import { listForUrl, nukeSite } from '../features/cookie-editor/operations';
 
 const listEl = document.querySelector<HTMLUListElement>('#feature-list');
 const recentEl = document.querySelector<HTMLUListElement>('#recently-closed');
 const recentSection = document.querySelector<HTMLElement>('#recently-closed-section');
+const cookiesSection = document.querySelector<HTMLElement>('#cookies-section');
+const cookiesSummary = document.querySelector<HTMLElement>('#cookies-summary');
 const optionsButton = document.querySelector<HTMLButtonElement>('#open-options');
 
 if (!listEl) throw new Error('#feature-list not found');
 if (!recentEl) throw new Error('#recently-closed not found');
 if (!recentSection) throw new Error('#recently-closed-section not found');
+if (!cookiesSection) throw new Error('#cookies-section not found');
+if (!cookiesSummary) throw new Error('#cookies-summary not found');
 if (!optionsButton) throw new Error('#open-options not found');
 
 optionsButton.addEventListener('click', () => {
@@ -23,9 +28,19 @@ chrome.storage.onChanged.addListener((_changes, area) => {
 });
 
 async function render(): Promise<void> {
-  const [settings, closed] = await Promise.all([getSettings(), getClosed()]);
+  const [settings, closed, activeTab] = await Promise.all([
+    getSettings(),
+    getClosed(),
+    getActiveTab(),
+  ]);
   renderFeatures(settings.enabled);
   renderRecentlyClosed(closed, settings.enabled['tab-cleaner']);
+  await renderCookies(activeTab, settings.enabled['cookie-editor']);
+}
+
+async function getActiveTab(): Promise<chrome.tabs.Tab | undefined> {
+  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  return tab;
 }
 
 function renderFeatures(enabled: Record<FeatureId, boolean>): void {
@@ -109,6 +124,57 @@ function renderClosedRow(entry: ClosedTab): HTMLLIElement {
   button.append(img, title, time);
   li.append(button);
   return li;
+}
+
+async function renderCookies(
+  tab: chrome.tabs.Tab | undefined,
+  cookieEditorOn: boolean,
+): Promise<void> {
+  if (!cookieEditorOn || !tab?.url || !isEditableUrl(tab.url)) {
+    cookiesSection!.hidden = true;
+    return;
+  }
+  cookiesSection!.hidden = false;
+  cookiesSummary!.replaceChildren();
+
+  const cookies = await listForUrl(tab.url).catch(() => []);
+  const count = document.createElement('p');
+  count.className = 'cookies-count';
+  count.textContent = `${cookies.length} cookie${cookies.length === 1 ? '' : 's'}`;
+  const host = document.createElement('small');
+  host.className = 'muted';
+  try {
+    host.textContent = new URL(tab.url).hostname;
+  } catch {
+    host.textContent = tab.url;
+  }
+
+  const actions = document.createElement('div');
+  actions.className = 'cookies-actions';
+  const editBtn = document.createElement('button');
+  editBtn.type = 'button';
+  editBtn.className = 'secondary-button';
+  editBtn.textContent = 'Open editor';
+  editBtn.addEventListener('click', () => {
+    chrome.runtime.openOptionsPage();
+    // Options page reads current tab URL on its own.
+  });
+  const nukeBtn = document.createElement('button');
+  nukeBtn.type = 'button';
+  nukeBtn.className = 'danger-button-small';
+  nukeBtn.textContent = `Nuke ${cookies.length}`;
+  nukeBtn.disabled = cookies.length === 0;
+  nukeBtn.addEventListener('click', () => {
+    if (!confirm(`Delete ${cookies.length} cookie${cookies.length === 1 ? '' : 's'} for ${host.textContent}?`)) return;
+    void nukeSite(tab.url!).then(() => render());
+  });
+  actions.append(editBtn, nukeBtn);
+
+  cookiesSummary!.append(count, host, actions);
+}
+
+function isEditableUrl(url: string): boolean {
+  return /^https?:\/\//.test(url);
 }
 
 function formatAge(ms: number): string {

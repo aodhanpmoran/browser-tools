@@ -278,3 +278,178 @@ main h2 {
 .allowlist-textarea:disabled {
   opacity: 0.6;
 }
+
+.cookie-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cookie-url-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.cookie-url-input {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 12px;
+}
+
+.primary-button {
+  padding: 8px 14px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: CanvasText;
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+  color: Canvas;
+}
+
+.primary-button:hover {
+  filter: brightness(1.08);
+}
+
+.danger-button {
+  padding: 8px 14px;
+  border: 1px solid color-mix(in srgb, #dc2626 70%, var(--border));
+  background: color-mix(in srgb, #dc2626 10%, transparent);
+  color: #dc2626;
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+
+.danger-button:hover:not(:disabled) {
+  background: color-mix(in srgb, #dc2626 20%, transparent);
+}
+
+.danger-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.cookie-site-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.cookie-table-container {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: auto;
+  max-height: 440px;
+}
+
+.cookie-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.cookie-table th,
+.cookie-table td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.cookie-table th {
+  background: color-mix(in srgb, CanvasText 4%, transparent);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  position: sticky;
+  top: 0;
+}
+
+.cookie-table tbody tr:hover {
+  background: color-mix(in srgb, CanvasText 3%, transparent);
+}
+
+.cookie-actions {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+
+.icon-button {
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.icon-button:hover {
+  background: color-mix(in srgb, CanvasText 6%, transparent);
+}
+
+.icon-button.primary {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.icon-button.danger {
+  color: #dc2626;
+  border-color: color-mix(in srgb, #dc2626 40%, var(--border));
+}
+
+.cookie-edit-input {
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}
+
+.danger-zone {
+  border: 1px solid color-mix(in srgb, #dc2626 30%, var(--border));
+  border-radius: 6px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, #dc2626 4%, transparent);
+}
+
+.danger-zone summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #dc2626;
+}
+
+.danger-body {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.danger-body h4 {
+  margin: 0;
+  font-size: 13px;
+}
+
+.confirm-input {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 12px;
+}

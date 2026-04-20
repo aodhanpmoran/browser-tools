@@ -153,3 +153,57 @@ h1 {
   color: var(--muted);
   flex-shrink: 0;
 }
+
+.cookies-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 4px;
+}
+
+.cookies-count {
+  margin: 0;
+  font-weight: 600;
+}
+
+.cookies-summary .muted {
+  color: var(--muted);
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}
+
+.cookies-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.secondary-button,
+.danger-button-small {
+  padding: 5px 10px;
+  border-radius: 4px;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.secondary-button:hover {
+  background: color-mix(in srgb, CanvasText 5%, transparent);
+}
+
+.danger-button-small {
+  color: #dc2626;
+  border-color: color-mix(in srgb, #dc2626 40%, var(--border));
+}
+
+.danger-button-small:hover:not(:disabled) {
+  background: color-mix(in srgb, #dc2626 10%, transparent);
+}
+
+.danger-button-small:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
