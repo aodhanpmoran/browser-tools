@@ -1,0 +1,15 @@
+.DS_Store
+.cursor
+.claude
+.agent
+.idea
+.pi
+.AGENT.md
+CLAUDE*.md
+local
+dist
+release
+tests/e2e/screenshots
+node_modules
+coverage
+plan.md
