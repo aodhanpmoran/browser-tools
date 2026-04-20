@@ -1,6 +1,10 @@
 import { FEATURE_IDS, type Feature, type FeatureId } from '../shared/feature';
 import { getSettings, onSettingsChanged } from '../shared/storage';
-import { tabCleanerFeature } from '../features/tab-cleaner';
+import {
+  isDirtyInputMessage,
+  tabCleanerFeature,
+  tabCleanerHandlers,
+} from '../features/tab-cleaner';
 import { cookieEditorFeature } from '../features/cookie-editor';
 import { redirectTracerFeature } from '../features/redirect-tracer';
 import { videoSpeedFeature } from '../features/video-speed';
@@ -14,41 +18,91 @@ const REGISTRY: Readonly<Record<FeatureId, Feature>> = {
   'news-feed-eradicator': newsFeedEradicatorFeature,
 };
 
-chrome.runtime.onInstalled.addListener(async () => {
-  console.log('[browser-tools] onInstalled');
-  for (const id of FEATURE_IDS) {
-    await REGISTRY[id].onInstall();
-  }
-  await applyEnabledState();
+// --- Top-level synchronous listener registration -----------------------------
+// MV3 service workers are torn down when idle. Listeners must be attached
+// synchronously at top-level so that the wake-up event that revives the SW is
+// actually delivered to a handler. Event handlers themselves check the
+// relevant feature's enabled state before doing work.
+
+chrome.runtime.onInstalled.addListener((details) => {
+  void handleInstalled(details);
 });
 
-chrome.runtime.onStartup.addListener(async () => {
-  console.log('[browser-tools] onStartup');
-  await applyEnabledState();
+chrome.runtime.onStartup.addListener(() => {
+  void handleStartup();
+});
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  void tabCleanerHandlers.onAlarm(alarm);
+});
+
+chrome.tabs.onCreated.addListener((tab) => {
+  tabCleanerHandlers.onTabCreated(tab);
+});
+
+chrome.tabs.onActivated.addListener((info) => {
+  tabCleanerHandlers.onTabActivated(info);
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  tabCleanerHandlers.onTabUpdated(tabId, changeInfo);
+});
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  tabCleanerHandlers.onTabRemoved(tabId);
+});
+
+chrome.runtime.onMessage.addListener((message, sender, _sendResponse) => {
+  if (isDirtyInputMessage(message)) {
+    void tabCleanerHandlers.onDirtyInputMessage(message, sender);
+  }
+  return false;
 });
 
 onSettingsChanged((next, prev) => {
   for (const id of FEATURE_IDS) {
     if (next.enabled[id] === prev.enabled[id]) continue;
     const feature = REGISTRY[id];
-    const call = next.enabled[id] ? feature.onEnable() : feature.onDisable();
-    call.catch((err: unknown) => {
+    const promise = next.enabled[id] ? feature.onEnable() : feature.onDisable();
+    promise.catch((err: unknown) => {
       console.error(`[browser-tools] ${id} transition failed`, err);
     });
   }
 });
 
-applyEnabledState().catch((err: unknown) => {
-  console.error('[browser-tools] initial apply failed', err);
-});
+// --- Startup paths -----------------------------------------------------------
+
+async function handleInstalled(details: chrome.runtime.InstalledDetails): Promise<void> {
+  console.log('[browser-tools] onInstalled', details.reason);
+  for (const id of FEATURE_IDS) {
+    await safeCall(id, 'onInstall', () => REGISTRY[id].onInstall());
+  }
+  await applyEnabledState();
+}
+
+async function handleStartup(): Promise<void> {
+  console.log('[browser-tools] onStartup');
+  await applyEnabledState();
+}
 
 async function applyEnabledState(): Promise<void> {
   const settings = await getSettings();
   for (const id of FEATURE_IDS) {
     const feature = REGISTRY[id];
-    const call = settings.enabled[id] ? feature.onEnable() : feature.onDisable();
-    await call.catch((err: unknown) => {
-      console.error(`[browser-tools] ${id} apply failed`, err);
-    });
+    const fn = settings.enabled[id] ? feature.onEnable : feature.onDisable;
+    await safeCall(id, settings.enabled[id] ? 'onEnable' : 'onDisable', () => fn.call(feature));
   }
 }
+
+async function safeCall(id: FeatureId, stage: string, fn: () => Promise<void>): Promise<void> {
+  try {
+    await fn();
+  } catch (err) {
+    console.error(`[browser-tools] ${id} ${stage} failed`, err);
+  }
+}
+
+// Run initial apply on every SW boot. This is safe to skip the await because
+// the listeners above are already attached; applyEnabledState only needs to
+// ensure alarms / activity seed / etc. are up to date.
+void applyEnabledState();

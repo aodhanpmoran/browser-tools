@@ -17,7 +17,8 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--fg);
-  min-width: 320px;
+  min-width: 340px;
+  max-width: 360px;
 }
 
 main {
@@ -40,6 +41,19 @@ h1 {
   letter-spacing: 0.01em;
 }
 
+.section {
+  margin-bottom: 12px;
+}
+
+.section-title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 8px 0 4px;
+}
+
 .link-button {
   background: none;
   border: none;
@@ -54,17 +68,14 @@ h1 {
   background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
-.feature-list {
+.feature-list,
+.recent-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
-}
-
-.feature-row {
-  margin: 0;
 }
 
 .feature-toggle {
@@ -101,4 +112,44 @@ h1 {
 .feature-text small {
   color: var(--muted);
   font-size: 11px;
+}
+
+.recent-link {
+  display: grid;
+  grid-template-columns: 14px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.recent-link:hover {
+  background: color-mix(in srgb, CanvasText 6%, transparent);
+}
+
+.recent-favicon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.recent-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.recent-time {
+  font-size: 11px;
+  color: var(--muted);
+  flex-shrink: 0;
 }

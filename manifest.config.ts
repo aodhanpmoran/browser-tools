@@ -17,13 +17,18 @@ export default defineManifest({
     service_worker: 'src/background/service-worker.ts',
     type: 'module',
   },
-  permissions: ['storage'],
+  permissions: ['storage', 'tabs', 'alarms'],
   host_permissions: [],
   content_scripts: [
     {
       matches: allHostPatterns(),
       js: ['src/features/news-feed-eradicator/content.ts'],
       run_at: 'document_start',
+    },
+    {
+      matches: ['http://*/*', 'https://*/*'],
+      js: ['src/features/tab-cleaner/content-unsaved.ts'],
+      run_at: 'document_idle',
     },
     {
       matches: ['http://*/*', 'https://*/*', 'file:///*'],
