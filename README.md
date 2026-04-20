@@ -16,8 +16,10 @@ capabilities into a single auditable MV3 extension.
   extension icon to see how you arrived at the current page.
 - **Video Speed Controller** — vendored fork of
   [igrigorik/videospeed](https://github.com/igrigorik/videospeed) (MIT).
-- **News Feed Eradicator** — vendored fork of
-  [jordwest/news-feed-eradicator](https://github.com/jordwest/news-feed-eradicator) (MIT).
+- **News Feed Eradicator** — original MIT implementation inspired by
+  [jordwest/news-feed-eradicator](https://github.com/jordwest/news-feed-eradicator)
+  (AGPL-3.0). Hides feeds on Twitter/X, YouTube, LinkedIn, Facebook, and Reddit
+  via per-site CSS selectors.
 
 Each feature is toggleable independently from the popup.
 

@@ -12,10 +12,16 @@ export interface RedirectTracerSettings {
   bufferSize: number;
 }
 
+export interface NewsFeedEradicatorSettings {
+  sitesEnabled: Record<string, boolean>;
+  showReplacement: boolean;
+}
+
 export interface Settings {
   enabled: Record<FeatureId, boolean>;
   tabCleaner: TabCleanerSettings;
   redirectTracer: RedirectTracerSettings;
+  newsFeedEradicator: NewsFeedEradicatorSettings;
 }
 
 const STORAGE_KEY = 'settings';
@@ -35,6 +41,16 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   redirectTracer: {
     bufferSize: 20,
+  },
+  newsFeedEradicator: {
+    sitesEnabled: {
+      twitter: true,
+      youtube: true,
+      linkedin: true,
+      facebook: true,
+      reddit: true,
+    },
+    showReplacement: true,
   },
 };
 

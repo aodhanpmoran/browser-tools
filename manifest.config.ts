@@ -1,5 +1,6 @@
 import { defineManifest } from '@crxjs/vite-plugin';
 import pkg from './package.json' with { type: 'json' };
+import { allHostPatterns } from './src/features/news-feed-eradicator/rules';
 
 export default defineManifest({
   manifest_version: 3,
@@ -15,6 +16,13 @@ export default defineManifest({
     service_worker: 'src/background/service-worker.ts',
     type: 'module',
   },
-  permissions: [],
+  permissions: ['storage'],
   host_permissions: [],
+  content_scripts: [
+    {
+      matches: allHostPatterns(),
+      js: ['src/features/news-feed-eradicator/content.ts'],
+      run_at: 'document_start',
+    },
+  ],
 });

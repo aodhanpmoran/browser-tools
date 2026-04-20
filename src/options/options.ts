@@ -1,5 +1,6 @@
 import { FEATURE_IDS, FEATURE_META, type FeatureId } from '../shared/feature';
-import { getSettings, setFeatureEnabled } from '../shared/storage';
+import { getSettings, patchSettings, setFeatureEnabled } from '../shared/storage';
+import { SITE_RULES } from '../features/news-feed-eradicator/rules';
 
 const navEl = document.querySelector<HTMLElement>('#feature-nav');
 const panelEl = document.querySelector<HTMLElement>('#feature-panel');
@@ -26,7 +27,7 @@ void render();
 async function render(): Promise<void> {
   const settings = await getSettings();
   renderNav(settings.enabled);
-  renderPanel(activeId, settings.enabled[activeId]);
+  await renderPanel(activeId);
 }
 
 function renderNav(enabled: Record<FeatureId, boolean>): void {
@@ -52,16 +53,27 @@ function renderNav(enabled: Record<FeatureId, boolean>): void {
   );
 }
 
-function renderPanel(id: FeatureId, enabled: boolean): void {
+async function renderPanel(id: FeatureId): Promise<void> {
   const meta = FEATURE_META[id];
+  const settings = await getSettings();
+  const enabled = settings.enabled[id];
 
+  const header = document.createElement('header');
   const h2 = document.createElement('h2');
   h2.textContent = meta.label;
-
   const description = document.createElement('p');
   description.className = 'description';
   description.textContent = meta.description;
+  header.append(h2, description);
 
+  const toggle = featureToggle(id, enabled);
+
+  const details = await renderDetails(id, enabled);
+
+  panelEl!.replaceChildren(header, toggle, details);
+}
+
+function featureToggle(id: FeatureId, enabled: boolean): HTMLLabelElement {
   const toggle = document.createElement('label');
   toggle.className = 'toggle';
   const checkbox = document.createElement('input');
@@ -70,18 +82,32 @@ function renderPanel(id: FeatureId, enabled: boolean): void {
   checkbox.addEventListener('change', () => {
     void setFeatureEnabled(id, checkbox.checked);
   });
-  const toggleText = document.createElement('span');
-  toggleText.textContent = enabled ? 'Enabled' : 'Disabled';
-  toggle.append(checkbox, toggleText);
-
-  const placeholder = document.createElement('p');
-  placeholder.className = 'placeholder';
-  placeholder.textContent = detailPlaceholder(id);
-
-  panelEl!.replaceChildren(h2, description, toggle, placeholder);
+  const text = document.createElement('span');
+  text.textContent = enabled ? 'Enabled' : 'Disabled';
+  toggle.append(checkbox, text);
+  return toggle;
 }
 
-function detailPlaceholder(id: FeatureId): string {
+async function renderDetails(id: FeatureId, enabled: boolean): Promise<HTMLElement> {
+  switch (id) {
+    case 'news-feed-eradicator':
+      return renderNfePanel(enabled);
+    case 'tab-cleaner':
+    case 'cookie-editor':
+    case 'redirect-tracer':
+    case 'video-speed':
+      return placeholder(placeholderText(id));
+  }
+}
+
+function placeholder(text: string): HTMLElement {
+  const p = document.createElement('p');
+  p.className = 'placeholder';
+  p.textContent = text;
+  return p;
+}
+
+function placeholderText(id: FeatureId): string {
   switch (id) {
     case 'tab-cleaner':
       return 'Threshold, allowlist, and exclusion controls appear in milestone M4.';
@@ -92,8 +118,57 @@ function detailPlaceholder(id: FeatureId): string {
     case 'video-speed':
       return 'Vendored from igrigorik/videospeed in milestone M3. Settings live on its own UI.';
     case 'news-feed-eradicator':
-      return 'Vendored from jordwest/news-feed-eradicator in milestone M2. Settings live on its own UI.';
+      return '';
   }
+}
+
+async function renderNfePanel(featureEnabled: boolean): Promise<HTMLElement> {
+  const settings = await getSettings();
+  const { sitesEnabled, showReplacement } = settings.newsFeedEradicator;
+
+  const root = document.createElement('section');
+  root.className = 'nfe-panel';
+
+  const sitesHeader = document.createElement('h3');
+  sitesHeader.textContent = 'Sites';
+  sitesHeader.className = 'subheader';
+
+  const sitesList = document.createElement('div');
+  sitesList.className = 'site-list';
+
+  for (const rule of SITE_RULES) {
+    const row = document.createElement('label');
+    row.className = 'site-row';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = sitesEnabled[rule.id] ?? true;
+    cb.disabled = !featureEnabled;
+    cb.addEventListener('change', () => {
+      void patchSettings({
+        newsFeedEradicator: { sitesEnabled: { [rule.id]: cb.checked } },
+      });
+    });
+    const name = document.createElement('span');
+    name.textContent = rule.label;
+    row.append(cb, name);
+    sitesList.append(row);
+  }
+
+  const bannerToggle = document.createElement('label');
+  bannerToggle.className = 'secondary-toggle';
+  const bannerCb = document.createElement('input');
+  bannerCb.type = 'checkbox';
+  bannerCb.checked = showReplacement;
+  bannerCb.disabled = !featureEnabled;
+  bannerCb.addEventListener('change', () => {
+    void patchSettings({ newsFeedEradicator: { showReplacement: bannerCb.checked } });
+  });
+  const bannerText = document.createElement('span');
+  bannerText.textContent = 'Show replacement banner';
+  bannerToggle.append(bannerCb, bannerText);
+
+  root.append(sitesHeader, sitesList, bannerToggle);
+  return root;
 }
 
 function readHashId(): FeatureId | null {

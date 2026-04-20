@@ -22,9 +22,11 @@ SOFTWARE.
 
 ---
 
-This project vendors code from two upstream open-source projects, each
-retaining their original MIT license. See the `vendor/` directory for the
-original LICENSE files and attribution:
+Attribution:
 
-- Video Speed Controller — https://github.com/igrigorik/videospeed (MIT)
-- News Feed Eradicator — https://github.com/jordwest/news-feed-eradicator (MIT)
+- Video Speed Controller (Milestone M3) — https://github.com/igrigorik/videospeed
+  (MIT). Original upstream LICENSE preserved in `vendor/` after fork.
+- News Feed Eradicator (Milestone M2) — the feature concept is inspired by
+  https://github.com/jordwest/news-feed-eradicator (AGPL-3.0), but the
+  implementation in this repository is an original, MIT-licensed work. No
+  AGPL-3.0 source code from that project is included.
