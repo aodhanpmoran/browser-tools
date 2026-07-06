@@ -9,7 +9,7 @@ export interface TabCleanerSettings {
 }
 
 export interface RedirectTracerSettings {
-  bufferSize: number;
+  // Reserved for future options. Enabled flag lives on `Settings.enabled`.
 }
 
 export interface NewsFeedEradicatorSettings {
@@ -17,11 +17,27 @@ export interface NewsFeedEradicatorSettings {
   showReplacement: boolean;
 }
 
+export interface GoogleUnhobbleSettings {
+  restoreMapsLink: boolean;
+  restoreViewImage: boolean;
+}
+
+export interface NowPlayingSettings {
+  historyCap: number;
+  autoSave: boolean;
+  acrHost: string;
+  acrKey: string;
+  acrSecret: string;
+  audioCaptureSeconds: number;
+}
+
 export interface Settings {
   enabled: Record<FeatureId, boolean>;
   tabCleaner: TabCleanerSettings;
   redirectTracer: RedirectTracerSettings;
   newsFeedEradicator: NewsFeedEradicatorSettings;
+  googleUnhobble: GoogleUnhobbleSettings;
+  nowPlaying: NowPlayingSettings;
 }
 
 const STORAGE_KEY = 'settings';
@@ -39,9 +55,7 @@ export const DEFAULT_SETTINGS: Settings = {
     excludeAudible: true,
     excludeDirtyInput: true,
   },
-  redirectTracer: {
-    bufferSize: 20,
-  },
+  redirectTracer: {},
   newsFeedEradicator: {
     sitesEnabled: {
       twitter: true,
@@ -51,6 +65,18 @@ export const DEFAULT_SETTINGS: Settings = {
       reddit: true,
     },
     showReplacement: true,
+  },
+  googleUnhobble: {
+    restoreMapsLink: true,
+    restoreViewImage: true,
+  },
+  nowPlaying: {
+    historyCap: 200,
+    autoSave: false,
+    acrHost: 'identify-eu-west-1.acrcloud.com',
+    acrKey: '',
+    acrSecret: '',
+    audioCaptureSeconds: 10,
   },
 };
 

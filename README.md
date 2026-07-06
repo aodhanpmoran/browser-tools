@@ -14,7 +14,10 @@ Built for personal use. Not published to the Chrome Web Store.
 | Cookie Editor           | Lists every cookie for the current site (or any URL), with inline edit, per-row delete, per-site nuke, and a confirmation-gated "delete every cookie everywhere". |
 | Redirect Tracer         | Passively captures main-frame redirect chains for every tab. Click the extension icon to see the hops and HTTP status codes for the current tab; copy-to-clipboard. |
 | Video Speed Controller  | Keyboard shortcuts (`S`/`D`/`Z`/`X`/`R`/`G`/`V`) for HTML5 video and audio speed, rewind, and overlay toggle. Vendored from [igrigorik/videospeed](https://github.com/igrigorik/videospeed) (MIT). |
-| News Feed Eradicator    | Hides the feed on Twitter/X, YouTube, LinkedIn, Facebook, and Reddit. Per-site toggle, optional replacement banner. |
+| News Feed Eradicator    | Hides the feed on Twitter/X, YouTube, LinkedIn, Facebook, and Reddit. Per-site toggle, optional replacement banner. On YouTube, also hides end-screen overlays and Shorts shelves and widens the video player. |
+| Google Unhobble         | Restores the Maps tab and the View-Image button that Google removes from EU users. Independent toggles for each restoration. |
+| Now Playing             | Shows the song playing in the active tab by reading player metadata (MediaSession, DOM rules, page title) — zero network calls on the fast path. When metadata is absent, offers a **Listen & identify** button that captures ~10 s of tab audio and identifies it via [ACRCloud](https://www.acrcloud.com/) (free trial; you supply your own keys). Save matches to a local history. |
+| Picture-in-Picture      | One-click pop-out of the largest `<video>` on the active tab into a floating PiP window. Click again to return it. |
 
 Each feature can be toggled independently from the popup.
 
@@ -70,7 +73,9 @@ card.
 | `cookies`           | Cookie Editor — list / edit / delete cookies.                                        |
 | `webRequest`        | Redirect Tracer — observe (not block) main-frame redirects.                          |
 | `webNavigation`     | Redirect Tracer — committed-navigation signal.                                       |
-| `host_permissions: <all_urls>` | Cookie Editor needs this for full cookie access; content scripts for NFE, VSC, and the dirty-input detector run on http / https sites. |
+| `tabCapture`        | Now Playing — capture tab audio on the user's click for ACRCloud identification.     |
+| `scripting`         | Picture-in-Picture — inject a one-shot function to request PiP on the active tab.    |
+| `host_permissions: <all_urls>` | Cookie Editor needs this for full cookie access; content scripts for NFE, VSC, Now Playing detection, and the dirty-input detector run on http / https sites. |
 
 MV3 does **not** allow `webRequestBlocking` outside enterprise policy — this
 extension only observes, never blocks.

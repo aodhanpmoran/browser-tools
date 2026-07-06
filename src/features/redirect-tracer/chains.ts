@@ -1,98 +1,59 @@
-export interface ChainEntry {
+export interface Hop {
   url: string;
-  statusCode: number | undefined;
-  at: number;
+  statusCode: number;
+  statusLine: string;
+  redirectUrl: string;
 }
 
-export interface RedirectChain {
-  tabId: number;
-  startedAt: number;
-  entries: ChainEntry[];
-  finishedAt: number | undefined;
+export interface RedirectTrace {
+  chain: Hop[];
+  finalUrl: string | null;
+  finalStatus: number | null;
 }
 
-const SESSION_KEY = 'redirectChains';
+const SESSION_PREFIX = 'redirectTrace:';
 
-export async function getAllChains(): Promise<Record<number, RedirectChain[]>> {
-  const result = await chrome.storage.session.get(SESSION_KEY);
-  return (result[SESSION_KEY] as Record<number, RedirectChain[]> | undefined) ?? {};
+const key = (tabId: number): string => `${SESSION_PREFIX}${tabId}`;
+
+const empty = (): RedirectTrace => ({ chain: [], finalUrl: null, finalStatus: null });
+
+export async function getTrace(tabId: number): Promise<RedirectTrace> {
+  const result = await chrome.storage.session.get(key(tabId));
+  return (result[key(tabId)] as RedirectTrace | undefined) ?? empty();
 }
 
-export async function getChainsForTab(tabId: number): Promise<RedirectChain[]> {
-  const all = await getAllChains();
-  return all[tabId] ?? [];
+async function setTrace(tabId: number, trace: RedirectTrace): Promise<void> {
+  await chrome.storage.session.set({ [key(tabId)]: trace });
 }
 
-export async function currentChain(tabId: number): Promise<RedirectChain | undefined> {
-  const chains = await getChainsForTab(tabId);
-  return chains[0];
+export async function resetForTab(tabId: number): Promise<void> {
+  await setTrace(tabId, empty());
 }
 
-export async function startChain(tabId: number, url: string): Promise<void> {
-  const all = await getAllChains();
-  const chain: RedirectChain = {
-    tabId,
-    startedAt: Date.now(),
-    entries: [{ url, statusCode: undefined, at: Date.now() }],
-    finishedAt: undefined,
-  };
-  const list = all[tabId] ?? [];
-  list.unshift(chain);
-  all[tabId] = list;
-  await capAndSave(all, tabId);
-}
-
-export async function appendRedirect(
+export async function appendHop(
   tabId: number,
-  toUrl: string,
-  statusCode: number | undefined,
+  details: chrome.webRequest.OnBeforeRedirectDetails,
 ): Promise<void> {
-  const all = await getAllChains();
-  const list = all[tabId];
-  if (!list || list.length === 0) return;
-  const chain = list[0]!;
-  // Record status on the previous hop (the redirect came from its response).
-  const last = chain.entries[chain.entries.length - 1];
-  if (last && last.statusCode === undefined) last.statusCode = statusCode;
-  chain.entries.push({ url: toUrl, statusCode: undefined, at: Date.now() });
-  await chrome.storage.session.set({ [SESSION_KEY]: all });
+  const trace = await getTrace(tabId);
+  trace.chain.push({
+    url: details.url,
+    statusCode: details.statusCode,
+    statusLine: details.statusLine ?? '',
+    redirectUrl: details.redirectUrl,
+  });
+  await setTrace(tabId, trace);
 }
 
-export async function finishChain(
+export async function recordFinal(
   tabId: number,
-  statusCode: number | undefined,
+  details: chrome.webRequest.OnCompletedDetails,
 ): Promise<void> {
-  const all = await getAllChains();
-  const list = all[tabId];
-  if (!list || list.length === 0) return;
-  const chain = list[0]!;
-  const last = chain.entries[chain.entries.length - 1];
-  if (last && last.statusCode === undefined) last.statusCode = statusCode;
-  chain.finishedAt = Date.now();
-  await chrome.storage.session.set({ [SESSION_KEY]: all });
+  const trace = await getTrace(tabId);
+  trace.finalUrl = details.url;
+  trace.finalStatus = details.statusCode;
+  await setTrace(tabId, trace);
 }
 
 export async function clearTab(tabId: number): Promise<void> {
-  const all = await getAllChains();
-  if (tabId in all) {
-    delete all[tabId];
-    await chrome.storage.session.set({ [SESSION_KEY]: all });
-  }
-}
-
-export async function clearAll(): Promise<void> {
-  await chrome.storage.session.remove(SESSION_KEY);
-}
-
-async function capAndSave(
-  all: Record<number, RedirectChain[]>,
-  tabId: number,
-): Promise<void> {
-  const list = all[tabId];
-  if (list) {
-    const settings = await import('../../shared/storage').then((m) => m.getSettings());
-    const cap = settings.redirectTracer.bufferSize;
-    if (list.length > cap) list.length = cap;
-  }
-  await chrome.storage.session.set({ [SESSION_KEY]: all });
+  await chrome.storage.session.remove(key(tabId));
 }

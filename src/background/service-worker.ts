@@ -6,9 +6,20 @@ import {
   tabCleanerHandlers,
 } from '../features/tab-cleaner';
 import { cookieEditorFeature } from '../features/cookie-editor';
-import { redirectTracerFeature, redirectTracerHandlers } from '../features/redirect-tracer';
+import {
+  isRedirectGetMessage,
+  redirectTracerFeature,
+  redirectTracerHandlers,
+} from '../features/redirect-tracer';
 import { videoSpeedFeature } from '../features/video-speed';
 import { newsFeedEradicatorFeature } from '../features/news-feed-eradicator';
+import { googleUnhobbleFeature } from '../features/google-unhobble';
+import { nowPlayingFeature } from '../features/now-playing';
+import {
+  isPipToggleMessage,
+  pictureInPictureFeature,
+  togglePip,
+} from '../features/picture-in-picture';
 
 const REGISTRY: Readonly<Record<FeatureId, Feature>> = {
   'tab-cleaner': tabCleanerFeature,
@@ -16,6 +27,9 @@ const REGISTRY: Readonly<Record<FeatureId, Feature>> = {
   'redirect-tracer': redirectTracerFeature,
   'video-speed': videoSpeedFeature,
   'news-feed-eradicator': newsFeedEradicatorFeature,
+  'google-unhobble': googleUnhobbleFeature,
+  'now-playing': nowPlayingFeature,
+  'picture-in-picture': pictureInPictureFeature,
 };
 
 // --- Top-level synchronous listener registration -----------------------------
@@ -53,12 +67,9 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   redirectTracerHandlers.onTabRemoved(tabId);
 });
 
-chrome.webRequest.onBeforeRequest.addListener(
-  (details) => {
-    void redirectTracerHandlers.onBeforeRequest(details);
-  },
-  { urls: ['http://*/*', 'https://*/*'], types: ['main_frame'] },
-);
+chrome.webNavigation.onBeforeNavigate.addListener((details) => {
+  void redirectTracerHandlers.onBeforeNavigate(details);
+});
 
 chrome.webRequest.onBeforeRedirect.addListener(
   (details) => {
@@ -74,9 +85,18 @@ chrome.webRequest.onCompleted.addListener(
   { urls: ['http://*/*', 'https://*/*'], types: ['main_frame'] },
 );
 
-chrome.runtime.onMessage.addListener((message, sender, _sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (isDirtyInputMessage(message)) {
     void tabCleanerHandlers.onDirtyInputMessage(message, sender);
+    return false;
+  }
+  if (isPipToggleMessage(message)) {
+    void togglePip(message.tabId).then(sendResponse);
+    return true;
+  }
+  if (isRedirectGetMessage(message)) {
+    void redirectTracerHandlers.getTrace(message.tabId).then(sendResponse);
+    return true;
   }
   return false;
 });

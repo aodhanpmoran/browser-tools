@@ -1,42 +1,59 @@
 import type { Feature } from '../../shared/feature';
 import { getSettings } from '../../shared/storage';
-import {
-  appendRedirect,
-  clearTab,
-  finishChain,
-  startChain,
-} from './chains';
+import { appendHop, clearTab, getTrace, recordFinal, resetForTab } from './chains';
+
+export type { Hop, RedirectTrace } from './chains';
+
+async function isEnabled(): Promise<boolean> {
+  const settings = await getSettings();
+  return settings.enabled['redirect-tracer'];
+}
 
 export const redirectTracerHandlers = {
-  async onBeforeRequest(details: chrome.webRequest.OnBeforeRequestDetails): Promise<void> {
+  async onBeforeNavigate(details: {
+    tabId: number;
+    frameId: number;
+    url: string;
+  }): Promise<void> {
     if (!(await isEnabled())) return;
-    if (details.type !== 'main_frame') return;
+    if (details.frameId !== 0) return;
     if (details.tabId < 0) return;
-    await startChain(details.tabId, details.url);
+    await resetForTab(details.tabId);
   },
 
   async onBeforeRedirect(details: chrome.webRequest.OnBeforeRedirectDetails): Promise<void> {
     if (!(await isEnabled())) return;
     if (details.type !== 'main_frame') return;
     if (details.tabId < 0) return;
-    await appendRedirect(details.tabId, details.redirectUrl, details.statusCode);
+    await appendHop(details.tabId, details);
   },
 
   async onCompleted(details: chrome.webRequest.OnCompletedDetails): Promise<void> {
     if (!(await isEnabled())) return;
     if (details.type !== 'main_frame') return;
     if (details.tabId < 0) return;
-    await finishChain(details.tabId, details.statusCode);
+    await recordFinal(details.tabId, details);
   },
 
   onTabRemoved(tabId: number): void {
     void clearTab(tabId);
   },
+
+  getTrace,
 };
 
-async function isEnabled(): Promise<boolean> {
-  const settings = await getSettings();
-  return settings.enabled['redirect-tracer'];
+export interface RedirectGetMessage {
+  kind: 'redirect.get';
+  tabId: number;
+}
+
+export function isRedirectGetMessage(value: unknown): value is RedirectGetMessage {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    (value as { kind?: unknown }).kind === 'redirect.get' &&
+    typeof (value as { tabId?: unknown }).tabId === 'number'
+  );
 }
 
 export const redirectTracerFeature: Feature = {

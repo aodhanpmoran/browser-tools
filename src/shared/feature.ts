@@ -4,6 +4,9 @@ export const FEATURE_IDS = [
   'redirect-tracer',
   'video-speed',
   'news-feed-eradicator',
+  'google-unhobble',
+  'now-playing',
+  'picture-in-picture',
 ] as const;
 
 export type FeatureId = (typeof FEATURE_IDS)[number];
@@ -39,6 +42,21 @@ export const FEATURE_META: Readonly<Record<FeatureId, FeatureMeta>> = {
     id: 'news-feed-eradicator',
     label: 'News Feed Eradicator',
     description: 'Hide news feeds on social media and content sites.',
+  },
+  'google-unhobble': {
+    id: 'google-unhobble',
+    label: 'Google Unhobble',
+    description: 'Restore the Maps tab and View-Image button Google hides from EU users.',
+  },
+  'now-playing': {
+    id: 'now-playing',
+    label: 'Now Playing',
+    description: 'Show the song playing in the active tab by reading player metadata.',
+  },
+  'picture-in-picture': {
+    id: 'picture-in-picture',
+    label: 'Picture-in-Picture',
+    description: 'Pop the largest video on the current tab into a floating PiP window.',
   },
 };
 
