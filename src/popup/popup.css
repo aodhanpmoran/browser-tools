@@ -33,6 +33,11 @@ body {
   overflow: hidden;
 }
 
+/* Dynamic page containers must participate in body's flex layout directly. */
+#pages {
+  display: contents;
+}
+
 /* ── Nav ───────────────────────────────────────────────── */
 .nav {
   display: flex;

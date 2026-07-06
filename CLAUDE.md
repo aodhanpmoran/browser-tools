@@ -1,0 +1,73 @@
+# Browser Tools
+
+A single Chromium MV3 extension bundling privacy/productivity features. Personal use,
+not published to the Chrome Web Store. Auditable — no telemetry, no network calls the
+extension didn't initiate itself (e.g. Now Playing's optional ACRCloud lookup).
+
+GitHub: `aodhanpmoran/browser-tools` (origin/main is the source of truth).
+
+## Commands
+
+```sh
+npm run dev         # vite dev server with HMR, load dist/ as unpacked extension
+npm run build        # production build to dist/
+npm test             # vitest run
+npm run test:watch
+npm run typecheck    # tsc --noEmit
+```
+
+## Architecture
+
+Each feature lives in `src/features/<name>/` and implements the `Feature` interface
+(`onInstall`/`onEnable`/`onDisable`) from `src/shared/feature.ts`. Feature IDs, labels,
+and descriptions are registered in `FEATURE_IDS`/`FEATURE_META` in that same file —
+adding a feature means adding it there plus a settings shape in `src/shared/storage.ts`
+(`Settings` interface + `DEFAULT_SETTINGS`).
+
+- `src/shared/storage.ts` — single `chrome.storage.local` blob under key `settings`,
+  deep-merged against `DEFAULT_SETTINGS` so new fields don't break existing installs.
+  Use `getSettings`/`patchSettings`/`setFeatureEnabled`/`onSettingsChanged`, never touch
+  `chrome.storage` directly.
+- `src/shared/messaging.ts` — typed request/response wrapper over
+  `chrome.runtime.sendMessage`. Use `registerMessageHandler`/`sendMessage` instead of
+  raw `chrome.runtime.onMessage`.
+- `src/background/service-worker.ts` — MV3 background entrypoint, wires up
+  feature lifecycle and alarms.
+- `src/popup/`, `src/options/` — popup and full options page UI (vanilla TS + CSS,
+  no framework).
+- `manifest.config.ts` — MV3 manifest built with `@crxjs/vite-plugin`'s
+  `defineManifest`. Content script matches/permissions live here.
+
+## Features (8)
+
+| Feature | Dir | Notes |
+|---|---|---|
+| Tab Cleaner | `tab-cleaner` | idle-tab auto-close, allowlist, undo via recently-closed |
+| Cookie Editor | `cookie-editor` | list/edit/delete/nuke cookies per site |
+| Redirect Tracer | `redirect-tracer` | passive per-tab redirect chain capture |
+| Video Speed Controller | `video-speed/upstream` | vendored subtree from `igrigorik/videospeed` (MIT) — don't hand-edit, see below |
+| News Feed Eradicator | `news-feed-eradicator` | MIT reimplementation (not a fork of the AGPL original); per-site toggles |
+| Google Unhobble | `google-unhobble` | restores Maps tab / View-Image button EU users lose |
+| Now Playing | `now-playing` | MediaSession/DOM/title detection, optional ACRCloud audio-fingerprint fallback, local history |
+| Picture-in-Picture | `picture-in-picture` | one-click pop-out of largest `<video>` |
+
+## Gotchas
+
+- **crxjs content-script basename collision**: `@crxjs/vite-plugin` v2.4.0 emits one
+  chunk per `content_scripts` entry keyed by `basename(file)`. Two entries with the same
+  basename (e.g. two files both named `content.ts`) silently dedupe at bundle time and
+  the plugin throws a confusing `Content script fileName is undefined: "<path>"` for
+  whichever one lost — looks like a missing file, isn't. **Always give each
+  `content_scripts` entry a unique filename**, prefixed with the feature name (see
+  `google-unhobble.content.ts`, `now-playing.content.ts`). Same rule applies to
+  `all_frames`/`MAIN`-world injected JS.
+- `src/features/video-speed/upstream/` is a vendored git subtree of the upstream
+  `videospeed` repo (merged in via `2dcfc70`). Treat it as third-party code — patch
+  narrowly and keep in mind re-vendoring will overwrite local edits.
+
+## State as of 2026-07-06
+
+Last pushed commit: `07b939a` — added Google Unhobble, Now Playing, and
+Picture-in-Picture, plus supporting popup/options UI rework. Working tree was clean
+after that push. No open branches or in-progress features beyond what's listed above;
+check `git log` and `git status` for anything since.
