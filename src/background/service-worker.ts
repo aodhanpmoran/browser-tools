@@ -20,6 +20,7 @@ import {
   pictureInPictureFeature,
   togglePip,
 } from '../features/picture-in-picture';
+import { imagePickerFeature } from '../features/image-picker';
 
 const REGISTRY: Readonly<Record<FeatureId, Feature>> = {
   'tab-cleaner': tabCleanerFeature,
@@ -30,6 +31,7 @@ const REGISTRY: Readonly<Record<FeatureId, Feature>> = {
   'google-unhobble': googleUnhobbleFeature,
   'now-playing': nowPlayingFeature,
   'picture-in-picture': pictureInPictureFeature,
+  'image-picker': imagePickerFeature,
 };
 
 // --- Top-level synchronous listener registration -----------------------------

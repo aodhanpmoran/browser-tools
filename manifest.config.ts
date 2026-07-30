@@ -26,8 +26,15 @@ export default defineManifest({
     'webNavigation',
     'tabCapture',
     'scripting',
+    'downloads',
   ],
   host_permissions: ['<all_urls>'],
+  web_accessible_resources: [
+    {
+      resources: ['src/features/image-picker/grid.html'],
+      matches: ['<all_urls>'],
+    },
+  ],
   content_scripts: [
     {
       matches: allHostPatterns(),

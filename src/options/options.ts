@@ -8,6 +8,7 @@ import { renderRedirectTracerOptionsPanel } from '../features/redirect-tracer/op
 import { renderGoogleUnhobbleOptionsPanel } from '../features/google-unhobble/options-panel';
 import { renderNowPlayingOptionsPanel } from '../features/now-playing/options-panel';
 import { renderPictureInPictureOptionsPanel } from '../features/picture-in-picture/options-panel';
+import { renderImagePickerOptionsPanel } from '../features/image-picker/options-panel';
 
 type OptionsPanelRenderer = (enabled: boolean) => Promise<HTMLElement> | HTMLElement;
 
@@ -20,6 +21,7 @@ const PANELS: Readonly<Record<FeatureId, OptionsPanelRenderer>> = {
   'google-unhobble': renderGoogleUnhobbleOptionsPanel,
   'now-playing': renderNowPlayingOptionsPanel,
   'picture-in-picture': renderPictureInPictureOptionsPanel,
+  'image-picker': renderImagePickerOptionsPanel,
 };
 
 const navEl = document.querySelector<HTMLElement>('#feature-nav');

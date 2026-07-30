@@ -38,7 +38,7 @@ adding a feature means adding it there plus a settings shape in `src/shared/stor
 - `manifest.config.ts` — MV3 manifest built with `@crxjs/vite-plugin`'s
   `defineManifest`. Content script matches/permissions live here.
 
-## Features (8)
+## Features (9)
 
 | Feature | Dir | Notes |
 |---|---|---|
@@ -50,6 +50,7 @@ adding a feature means adding it there plus a settings shape in `src/shared/stor
 | Google Unhobble | `google-unhobble` | restores Maps tab / View-Image button EU users lose |
 | Now Playing | `now-playing` | MediaSession/DOM/title detection, optional ACRCloud audio-fingerprint fallback, local history |
 | Picture-in-Picture | `picture-in-picture` | one-click pop-out of largest `<video>` |
+| Image Picker | `image-picker` | scan a page or a linked page for images, pick and download |
 
 ## Gotchas
 
