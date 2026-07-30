@@ -31,6 +31,23 @@ export interface NowPlayingSettings {
   audioCaptureSeconds: number;
 }
 
+export interface FocusBoardSettings {
+  /** Default length of a focus run in minutes. 0 means an open-ended stopwatch. */
+  sessionMinutes: number;
+  /** Durations offered in the popup's picker. 0 is the stopwatch option. */
+  sessionPresets: number[];
+  /** Clear completed tasks at the start of each local day. */
+  autoRollover: boolean;
+  /** Mirror the running timer on the toolbar badge. */
+  showBadge: boolean;
+  /** Block `blocklist` sites while a focus session is running. */
+  blockDuringFocus: boolean;
+  /** Hostnames to block. Normalised at use time, so free-form entry is fine. */
+  blocklist: string[];
+  /** Also divert chrome://extensions, chrome://settings and this options page. */
+  guardSettingsPages: boolean;
+}
+
 export interface Settings {
   enabled: Record<FeatureId, boolean>;
   tabCleaner: TabCleanerSettings;
@@ -38,6 +55,7 @@ export interface Settings {
   newsFeedEradicator: NewsFeedEradicatorSettings;
   googleUnhobble: GoogleUnhobbleSettings;
   nowPlaying: NowPlayingSettings;
+  focusBoard: FocusBoardSettings;
 }
 
 const STORAGE_KEY = 'settings';
@@ -77,6 +95,25 @@ export const DEFAULT_SETTINGS: Settings = {
     acrKey: '',
     acrSecret: '',
     audioCaptureSeconds: 10,
+  },
+  focusBoard: {
+    sessionMinutes: 25,
+    sessionPresets: [15, 25, 50, 90, 0],
+    autoRollover: true,
+    showBadge: true,
+    blockDuringFocus: true,
+    blocklist: [
+      'youtube.com',
+      'x.com',
+      'twitter.com',
+      'reddit.com',
+      'instagram.com',
+      'facebook.com',
+      'tiktok.com',
+      'news.ycombinator.com',
+      'linkedin.com',
+    ],
+    guardSettingsPages: true,
   },
 };
 

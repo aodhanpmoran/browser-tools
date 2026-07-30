@@ -8,6 +8,7 @@ export const FEATURE_IDS = [
   'now-playing',
   'picture-in-picture',
   'image-picker',
+  'focus-board',
 ] as const;
 
 export type FeatureId = (typeof FEATURE_IDS)[number];
@@ -63,6 +64,11 @@ export const FEATURE_META: Readonly<Record<FeatureId, FeatureMeta>> = {
     id: 'image-picker',
     label: 'Image Picker',
     description: 'Scan a page or link for all its images, then download the ones you want.',
+  },
+  'focus-board': {
+    id: 'focus-board',
+    label: 'Focus Board',
+    description: 'Three tasks a day, one that matters most, broken into steps with a timer.',
   },
 };
 

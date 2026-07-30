@@ -11,6 +11,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         'image-picker-grid': 'src/features/image-picker/grid.html',
+        'focus-board-blocked': 'src/features/focus-board/blocked.html',
       },
     },
   },

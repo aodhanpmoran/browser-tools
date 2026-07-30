@@ -6,9 +6,11 @@ import { redirectTracerPopupPage } from '../features/redirect-tracer/popup-panel
 import { nowPlayingPopupPage } from '../features/now-playing/popup-panel';
 import { pictureInPicturePopupPage } from '../features/picture-in-picture/popup-panel';
 import { imagePickerPopupPage } from '../features/image-picker/popup-panel';
+import { focusBoardPopupPage } from '../features/focus-board/popup-panel';
 import { renderRecentlyClosed } from '../features/tab-cleaner/popup-panel';
 
 const PAGES: readonly PopupPage[] = [
+  focusBoardPopupPage,
   imagePickerPopupPage,
   cookieEditorPopupPage,
   redirectTracerPopupPage,

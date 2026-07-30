@@ -9,6 +9,7 @@ import { renderGoogleUnhobbleOptionsPanel } from '../features/google-unhobble/op
 import { renderNowPlayingOptionsPanel } from '../features/now-playing/options-panel';
 import { renderPictureInPictureOptionsPanel } from '../features/picture-in-picture/options-panel';
 import { renderImagePickerOptionsPanel } from '../features/image-picker/options-panel';
+import { renderFocusBoardOptionsPanel } from '../features/focus-board/options-panel';
 
 type OptionsPanelRenderer = (enabled: boolean) => Promise<HTMLElement> | HTMLElement;
 
@@ -22,6 +23,7 @@ const PANELS: Readonly<Record<FeatureId, OptionsPanelRenderer>> = {
   'now-playing': renderNowPlayingOptionsPanel,
   'picture-in-picture': renderPictureInPictureOptionsPanel,
   'image-picker': renderImagePickerOptionsPanel,
+  'focus-board': renderFocusBoardOptionsPanel,
 };
 
 const navEl = document.querySelector<HTMLElement>('#feature-nav');

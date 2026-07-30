@@ -27,7 +27,10 @@ adding a feature means adding it there plus a settings shape in `src/shared/stor
 - `src/shared/storage.ts` — single `chrome.storage.local` blob under key `settings`,
   deep-merged against `DEFAULT_SETTINGS` so new fields don't break existing installs.
   Use `getSettings`/`patchSettings`/`setFeatureEnabled`/`onSettingsChanged`, never touch
-  `chrome.storage` directly.
+  `chrome.storage` directly. Bulk feature *data* (as opposed to settings) lives under its
+  own `chrome.storage.local` key behind a module that owns it — `nowPlayingHistory`
+  (`now-playing/history.ts`) and `focusBoard` (`focus-board/store.ts`). Keep it out of the
+  settings blob so a deep-merge never has to reconcile a list.
 - `src/shared/messaging.ts` — typed request/response wrapper over
   `chrome.runtime.sendMessage`. Use `registerMessageHandler`/`sendMessage` instead of
   raw `chrome.runtime.onMessage`.
@@ -38,7 +41,7 @@ adding a feature means adding it there plus a settings shape in `src/shared/stor
 - `manifest.config.ts` — MV3 manifest built with `@crxjs/vite-plugin`'s
   `defineManifest`. Content script matches/permissions live here.
 
-## Features (9)
+## Features (10)
 
 | Feature | Dir | Notes |
 |---|---|---|
@@ -50,7 +53,8 @@ adding a feature means adding it there plus a settings shape in `src/shared/stor
 | Google Unhobble | `google-unhobble` | restores Maps tab / View-Image button EU users lose |
 | Now Playing | `now-playing` | MediaSession/DOM/title detection, optional ACRCloud audio-fingerprint fallback, local history |
 | Picture-in-Picture | `picture-in-picture` | one-click pop-out of largest `<video>` |
-| Image Picker | `image-picker` | scan a page or a linked page for images, pick and download |
+| Image Picker | `image-picker` | scan page/link for images, pick and download |
+| Focus Board | `focus-board` | Basecamp-ish to-dos: hard cap of 3 for Today, one starred "The One", subtasks, per-task timer, site blocking while a session runs |
 
 ## Gotchas
 
@@ -62,6 +66,16 @@ adding a feature means adding it there plus a settings shape in `src/shared/stor
   `content_scripts` entry a unique filename**, prefixed with the feature name (see
   `google-unhobble.content.ts`, `now-playing.content.ts`). Same rule applies to
   `all_frames`/`MAIN`-world injected JS.
+- **`chrome://` pages cannot be blocked by any extension.** `declarativeNetRequest` will
+  not match them and content scripts cannot run there, so Focus Board's "lock
+  chrome://extensions" guard is a `tabs.onUpdated` watcher that navigates the tab to the
+  block page after the fact (`focus-board/blocker.ts`). It is friction, not enforcement —
+  removing the extension via the toolbar right-click menu bypasses it entirely. Don't
+  "fix" this by reaching for DNR; the platform forbids it. Real enforcement needs an OS
+  managed-policy profile (`ExtensionInstallForcelist`), which is outside the extension.
+- Focus Board's dynamic DNR rules live in the fixed ID range `9000..9200`
+  (`RULE_ID_BASE`/`MAX_BLOCKED_SITES`). Any other feature adding dynamic rules must pick a
+  different range — `applyNetworkRules` clears its whole range on every write.
 - `src/features/video-speed/upstream/` is a vendored git subtree of the upstream
   `videospeed` repo (merged in via `2dcfc70`). Treat it as third-party code — patch
   narrowly and keep in mind re-vendoring will overwrite local edits.
