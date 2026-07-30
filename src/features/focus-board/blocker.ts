@@ -13,7 +13,7 @@
  */
 
 /** Dynamic rule IDs live in a private range so we never clobber another feature's. */
-const RULE_ID_BASE = 9000;
+export const RULE_ID_BASE = 9000;
 /** Keeps the rule set well inside Chrome's dynamic-rule budget. */
 export const MAX_BLOCKED_SITES = 200;
 

@@ -1284,3 +1284,14 @@ body {
 .fb-suggest-stamp {
   font-size: 10.5px;
 }
+
+/* Blocking configured but not actually installed — never reassure falsely. */
+.fb-banner.warn {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+  color: var(--danger);
+}
+
+.fb-banner.warn .fb-banner-dot {
+  background: var(--danger);
+}

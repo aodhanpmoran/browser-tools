@@ -18,7 +18,7 @@ import {
   todayTasks,
 } from './store';
 import { countDone, formatDuration, sessionRemaining, taskSeconds } from './timer';
-import { normaliseSites } from './blocker';
+import { RULE_ID_BASE, normaliseSites } from './blocker';
 import { acceptSuggestion, dismissSuggestion } from './store';
 import {
   loadSuggestions,
@@ -62,7 +62,7 @@ async function renderFocusBoard(container: HTMLElement, ctx: PanelContext): Prom
   const root = document.createElement('div');
   root.className = 'fb';
 
-  const banner = blockingBanner(board, ctx);
+  const banner = await blockingBanner(board, ctx);
   if (banner) root.append(banner);
 
   const suggestions = await suggestionsSection(board, ctx);
@@ -198,21 +198,61 @@ function suggestionRow(s: Suggestion, isTop: boolean, ctx: PanelContext): HTMLLI
   return li;
 }
 
-/** Says plainly what is blocked right now, so the state is never a surprise. */
-function blockingBanner(board: BoardState, ctx: PanelContext): HTMLElement | null {
+/**
+ * Says plainly what is blocked right now.
+ *
+ * Reports what is ACTUALLY installed, not what settings intend. Those two can
+ * disagree — most commonly when `dist/` is rebuilt underneath a running Chrome,
+ * which leaves a stale service worker that never installs the rules. A banner
+ * that claims "9 sites blocked" while nothing is blocked is worse than no
+ * banner at all, so the count is read back from the rule engine.
+ */
+async function blockingBanner(
+  board: BoardState,
+  ctx: PanelContext,
+): Promise<HTMLElement | null> {
   const { blockDuringFocus, blocklist, guardSettingsPages } = ctx.settings.focusBoard;
   if (!board.timer || !blockDuringFocus) return null;
 
-  const count = normaliseSites(blocklist).length;
-  if (count === 0 && !guardSettingsPages) return null;
+  const wanted = normaliseSites(blocklist).length;
+  if (wanted === 0 && !guardSettingsPages) return null;
+
+  let installed = 0;
+  let readable = true;
+  try {
+    const rules = await chrome.declarativeNetRequest.getDynamicRules();
+    installed = rules.filter((r) => r.id >= RULE_ID_BASE && r.id < RULE_ID_BASE + wanted).length;
+  } catch {
+    readable = false;
+  }
 
   const el = document.createElement('div');
+  const text = document.createElement('span');
+
+  // Rules were wanted but are not there: say so loudly rather than reassure.
+  if (readable && wanted > 0 && installed === 0) {
+    el.className = 'fb-banner warn';
+    text.textContent = 'Blocking is NOT active — reload the extension';
+    text.title =
+      'A focus session is running and sites are configured, but no rules are installed. ' +
+      'Usually a stale service worker after dist/ was rebuilt: reload the extension in chrome://extensions.';
+    const dot = document.createElement('span');
+    dot.className = 'fb-banner-dot';
+    el.append(dot, text);
+    return el;
+  }
+
   el.className = 'fb-banner';
   const dot = document.createElement('span');
   dot.className = 'fb-banner-dot';
-  const text = document.createElement('span');
   const parts: string[] = [];
-  if (count > 0) parts.push(`${count} site${count === 1 ? '' : 's'} blocked`);
+  if (wanted > 0) {
+    parts.push(
+      installed < wanted && readable
+        ? `${installed}/${wanted} sites blocked`
+        : `${wanted} site${wanted === 1 ? '' : 's'} blocked`,
+    );
+  }
   if (guardSettingsPages) parts.push('settings locked');
   text.textContent = parts.join(' · ');
   el.append(dot, text);

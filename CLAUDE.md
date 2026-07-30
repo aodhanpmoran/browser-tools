@@ -93,6 +93,15 @@ adding a feature means adding it there plus a settings shape in `src/shared/stor
 - `src/features/video-speed/upstream/` is a vendored git subtree of the upstream
   `videospeed` repo (merged in via `2dcfc70`). Treat it as third-party code — patch
   narrowly and keep in mind re-vendoring will overwrite local edits.
+- **Rebuilding `dist/` under a running Chrome does NOT reload the extension.**
+  `--load-extension` reads the directory at launch; the service worker keeps executing
+  the build it started with. Symptom is maddening: `fetch()`-ing the chunk from inside
+  the worker shows the *new* code (it reads from disk) while the worker *running* events
+  is the old one, so blocking silently does nothing and every diagnostic contradicts the
+  next. Cost a long debugging session on 30 Jul. After `npm run build`, reload from
+  `chrome://extensions` or restart the browser. `chrome.runtime.reload()` from the
+  worker is not a fix — under `--load-extension` it unloads the extension and Chrome
+  refuses to re-enable it, leaving `ERR_BLOCKED_BY_CLIENT`.
 - `npm test` sometimes does not exit when run without a TTY (backgrounded, piped, or
   from an agent), even though every test has already passed — it hangs after printing
   the summary. Use `CI=true npx vitest run` in those contexts. A "timed out" test run is
