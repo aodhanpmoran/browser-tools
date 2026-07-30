@@ -46,6 +46,10 @@ export interface FocusBoardSettings {
   blocklist: string[];
   /** Also divert chrome://extensions, chrome://settings and this options page. */
   guardSettingsPages: boolean;
+  /** Read daily suggestions written by the desktop agent. */
+  suggestionsEnabled: boolean;
+  /** Path to the agent-written JSON. `~/` and bare relative paths are expanded. */
+  suggestionsPath: string;
 }
 
 export interface Settings {
@@ -114,6 +118,10 @@ export const DEFAULT_SETTINGS: Settings = {
       'linkedin.com',
     ],
     guardSettingsPages: true,
+    suggestionsEnabled: true,
+    // Absolute path, resolved once by the options panel's Detect button — a
+    // popup has no filesystem API to expand `~` with.
+    suggestionsPath: '',
   },
 };
 

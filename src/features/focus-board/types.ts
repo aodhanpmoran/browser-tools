@@ -40,10 +40,13 @@ export interface BoardState {
   timer: ActiveTimer | null;
   /** YYYY-MM-DD of the last rollover, so completed work clears once per day. */
   lastRollover: string;
+  /** Suggestion ids waved away, so a regenerated file does not re-offer them. */
+  dismissed: string[];
 }
 
 export const EMPTY_BOARD: BoardState = {
   tasks: [],
   timer: null,
   lastRollover: '',
+  dismissed: [],
 };

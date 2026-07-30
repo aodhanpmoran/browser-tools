@@ -562,3 +562,37 @@ main h2 {
   border-radius: 3px;
   background: color-mix(in srgb, CanvasText 8%, transparent);
 }
+
+.fb-path-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.fb-path-row .np-key-input {
+  flex: 1;
+  min-width: 0;
+  margin-top: 0;
+}
+
+.fb-detect-btn {
+  flex: none;
+  padding: 8px 14px;
+  border: 1px solid var(--border, color-mix(in srgb, CanvasText 14%, transparent));
+  border-radius: 7px;
+  background: Canvas;
+  color: CanvasText;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fb-detect-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, CanvasText 6%, transparent);
+}
+
+.fb-detect-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

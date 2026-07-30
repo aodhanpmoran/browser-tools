@@ -1201,3 +1201,86 @@ body {
   padding: 3px 4px 3px 8px;
   cursor: pointer;
 }
+
+/* Focus Board — daily suggestions */
+.fb-suggest {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.fb-suggest-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.fb-suggest-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+}
+
+/* Highest leverage sorts first and is styled to be read first. */
+.fb-suggest-row.top {
+  border-color: var(--accent-fade-strong);
+  background: var(--accent-fade);
+}
+
+.fb-leverage {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  font-size: 11.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: var(--surface-hover);
+  color: var(--muted);
+  cursor: help;
+}
+
+.fb-suggest-row.top .fb-leverage {
+  background: var(--accent);
+  color: #fff;
+}
+
+.fb-suggest-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fb-suggest-title {
+  font-size: 12.5px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.fb-suggest-meta {
+  font-size: 10.5px;
+  color: var(--muted);
+  text-transform: lowercase;
+}
+
+.fb-suggest-why {
+  font-size: 11px;
+  color: var(--muted);
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+
+.fb-suggest-stamp {
+  font-size: 10.5px;
+}

@@ -54,7 +54,7 @@ adding a feature means adding it there plus a settings shape in `src/shared/stor
 | Now Playing | `now-playing` | MediaSession/DOM/title detection, optional ACRCloud audio-fingerprint fallback, local history |
 | Picture-in-Picture | `picture-in-picture` | one-click pop-out of largest `<video>` |
 | Image Picker | `image-picker` | scan page/link for images, pick and download |
-| Focus Board | `focus-board` | Basecamp-ish to-dos: hard cap of 3 for Today, one starred "The One", subtasks, per-task timer, site blocking while a session runs |
+| Focus Board | `focus-board` | Basecamp-ish to-dos: hard cap of 3 for Today, one starred "The One", subtasks, per-task timer, site blocking while a session runs, daily agent suggestions |
 
 ## Gotchas
 
@@ -76,6 +76,16 @@ adding a feature means adding it there plus a settings shape in `src/shared/stor
 - Focus Board's dynamic DNR rules live in the fixed ID range `9000..9200`
   (`RULE_ID_BASE`/`MAX_BLOCKED_SITES`). Any other feature adding dynamic rules must pick a
   different range — `applyNetworkRules` clears its whole range on every write.
+- Focus Board reads daily suggestions from a JSON file written by an outside
+  scheduled agent (`docs/suggestions-agent.md`), because the extension cannot reach
+  Fathom or Gmail — those are desktop MCP connectors with no in-browser route. Reading
+  it needs `file:///*` in `host_permissions` **and** the per-extension "Allow access to
+  file URLs" toggle, which only the user can tick.
+- `file://` probes must be time-boxed. A `file://` directory listing returns
+  `status: 0` (so `res.ok` is meaningless there) and `/home` on macOS is an autofs
+  automount that never answers — an un-timed fetch to it hangs forever. See
+  `fetchWithTimeout` in `focus-board/suggestions.ts`. Chrome also renders listings as
+  `addRow(name, url, isdir, ...)` script calls, not `<a href>` markup.
 - `src/features/video-speed/upstream/` is a vendored git subtree of the upstream
   `videospeed` repo (merged in via `2dcfc70`). Treat it as third-party code — patch
   narrowly and keep in mind re-vendoring will overwrite local edits.

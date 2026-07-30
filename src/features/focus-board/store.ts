@@ -10,6 +10,7 @@ export async function getBoard(): Promise<BoardState> {
     tasks: Array.isArray(stored?.tasks) ? stored.tasks : [],
     timer: stored?.timer ?? null,
     lastRollover: typeof stored?.lastRollover === 'string' ? stored.lastRollover : '',
+    dismissed: Array.isArray(stored?.dismissed) ? stored.dismissed : [],
   };
 }
 
@@ -224,6 +225,45 @@ function bankRun(board: BoardState): BoardState {
       t.id === taskId ? { ...t, secondsSpent: t.secondsSpent + seconds } : t,
     ),
   };
+}
+
+export async function dismissSuggestion(id: string): Promise<BoardState> {
+  return mutate((board) =>
+    board.dismissed.includes(id) ? board : { ...board, dismissed: [...board.dismissed, id] },
+  );
+}
+
+export async function clearDismissed(): Promise<BoardState> {
+  return mutate((board) => ({ ...board, dismissed: [] }));
+}
+
+/**
+ * Turns a suggestion into a real task, with its pre-broken steps attached, and
+ * marks it dismissed so it cannot be added twice. Lands in Today when there is
+ * room, otherwise the backlog — the cap still wins.
+ */
+export async function acceptSuggestion(suggestion: {
+  id: string;
+  title: string;
+  subtasks: readonly string[];
+}): Promise<BoardState> {
+  return mutate((board) => {
+    const lane: Lane = isTodayFull(board) ? 'backlog' : 'today';
+    const task: Task = {
+      id: newId(),
+      title: suggestion.title,
+      lane,
+      starred: lane === 'today' && !board.tasks.some((t) => t.starred && !t.done),
+      done: false,
+      subtasks: suggestion.subtasks.map((title) => ({ id: newId(), title, done: false })),
+      secondsSpent: 0,
+      createdAt: Date.now(),
+    };
+    const dismissed = board.dismissed.includes(suggestion.id)
+      ? board.dismissed
+      : [...board.dismissed, suggestion.id];
+    return { ...board, tasks: [...board.tasks, task], dismissed };
+  });
 }
 
 /** Drops finished tasks. Used by the daily rollover and the manual clear button. */

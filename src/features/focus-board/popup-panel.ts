@@ -1,5 +1,5 @@
 import type { PanelContext, PopupPage } from '../../shared/panel';
-import { emptyNote } from '../../shared/dom';
+import { emptyNote, formatAge } from '../../shared/dom';
 import {
   addSubtask,
   addTask,
@@ -19,6 +19,14 @@ import {
 } from './store';
 import { countDone, formatDuration, sessionRemaining, taskSeconds } from './timer';
 import { normaliseSites } from './blocker';
+import { acceptSuggestion, dismissSuggestion } from './store';
+import {
+  loadSuggestions,
+  toFileUrl,
+  visibleSuggestions,
+  type Suggestion,
+  type SuggestionsResult,
+} from './suggestions';
 import { TODAY_CAP, type BoardState, type Task } from './types';
 
 export const focusBoardPopupPage: PopupPage = {
@@ -57,6 +65,9 @@ async function renderFocusBoard(container: HTMLElement, ctx: PanelContext): Prom
   const banner = blockingBanner(board, ctx);
   if (banner) root.append(banner);
 
+  const suggestions = await suggestionsSection(board, ctx);
+  if (suggestions) root.append(suggestions);
+
   root.append(sectionHeading('Today', `${today.filter((t) => !t.done).length}/${TODAY_CAP}`));
 
   if (today.length === 0) {
@@ -85,6 +96,106 @@ async function renderFocusBoard(container: HTMLElement, ctx: PanelContext): Prom
     tickHandle = window.setInterval(() => updateClocks(container, board, sessionMinutes), 1000);
     updateClocks(container, board, sessionMinutes);
   }
+}
+
+/**
+ * Suggestions handed over by the desktop agent. Deliberately not auto-added:
+ * you accept one, which is the moment you decide it earns a slot.
+ */
+async function suggestionsSection(
+  board: BoardState,
+  ctx: PanelContext,
+): Promise<HTMLElement | null> {
+  const { suggestionsEnabled, suggestionsPath } = ctx.settings.focusBoard;
+  if (!suggestionsEnabled || !suggestionsPath.trim()) return null;
+
+  // The path is stored absolute — the options panel resolves it once, because
+  // a popup has no filesystem API to expand `~` with.
+  const result: SuggestionsResult = await loadSuggestions(toFileUrl(suggestionsPath));
+
+  const pending = visibleSuggestions(
+    result.suggestions,
+    board.dismissed,
+    board.tasks.map((t) => t.title),
+  );
+  // Nothing to offer and nothing worth reporting — stay out of the way.
+  if (pending.length === 0 && result.status !== 'malformed') return null;
+
+  const wrap = document.createElement('section');
+  wrap.className = 'fb-suggest';
+
+  const heading = sectionHeading('Suggested', result.goal ? `vs ${result.goal}` : undefined);
+  wrap.append(heading);
+
+  if (result.status === 'malformed') {
+    wrap.append(emptyNote(result.message ?? 'Suggestions file is unreadable.', 'fb-empty'));
+    return wrap;
+  }
+
+  const list = document.createElement('ul');
+  list.className = 'fb-suggest-list';
+  list.append(...pending.map((s, i) => suggestionRow(s, i === 0, ctx)));
+  wrap.append(list);
+
+  if (result.generatedAt) {
+    const stamp = document.createElement('p');
+    stamp.className = 'fb-suggest-stamp muted';
+    stamp.textContent = `Gathered ${formatAge(Date.now() - result.generatedAt)} ago`;
+    wrap.append(stamp);
+  }
+  return wrap;
+}
+
+function suggestionRow(s: Suggestion, isTop: boolean, ctx: PanelContext): HTMLLIElement {
+  const li = document.createElement('li');
+  li.className = 'fb-suggest-row';
+  // The top row is the highest-leverage item — the one most likely to earn
+  // the star, so it is styled to be read first.
+  li.classList.toggle('top', isTop);
+
+  const score = document.createElement('span');
+  score.className = 'fb-leverage';
+  score.textContent = String(s.leverage);
+  score.title = s.leverageWhy
+    ? `Leverage ${s.leverage}/10 — ${s.leverageWhy}`
+    : `Leverage ${s.leverage}/10`;
+
+  const body = document.createElement('div');
+  body.className = 'fb-suggest-body';
+
+  const title = document.createElement('span');
+  title.className = 'fb-suggest-title';
+  title.textContent = s.title;
+  body.append(title);
+
+  const meta = document.createElement('span');
+  meta.className = 'fb-suggest-meta';
+  const bits = [s.source, s.sourceDetail].filter(Boolean) as string[];
+  if (s.subtasks.length > 0) bits.push(`${s.subtasks.length} steps ready`);
+  meta.textContent = bits.join(' · ');
+  body.append(meta);
+
+  if (s.leverageWhy) {
+    const why = document.createElement('span');
+    why.className = 'fb-suggest-why';
+    why.textContent = s.leverageWhy;
+    body.append(why);
+  }
+
+  const actions = document.createElement('span');
+  actions.className = 'fb-actions';
+  actions.append(
+    iconButton('+', 'Add to the board', () => {
+      void acceptSuggestion(s);
+    }),
+    iconButton('×', 'Not today', () => {
+      void dismissSuggestion(s.id);
+    }),
+  );
+
+  li.append(score, body, actions);
+  void ctx;
+  return li;
 }
 
 /** Says plainly what is blocked right now, so the state is never a surprise. */

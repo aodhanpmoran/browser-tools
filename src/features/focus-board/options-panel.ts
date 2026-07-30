@@ -1,13 +1,29 @@
 import { getSettings, patchSettings } from '../../shared/storage';
-import { backlogTasks, clearCompleted, clearBoard, getBoard, todayTasks } from './store';
+import {
+  backlogTasks,
+  clearBoard,
+  clearCompleted,
+  clearDismissed,
+  getBoard,
+  todayTasks,
+} from './store';
+import { detectSuggestionsPath, loadSuggestions, toFileUrl } from './suggestions';
 import { formatDuration, taskSeconds } from './timer';
 import { MAX_BLOCKED_SITES, normaliseSites } from './blocker';
 import { TODAY_CAP } from './types';
 
 export async function renderFocusBoardOptionsPanel(featureEnabled: boolean): Promise<HTMLElement> {
   const settings = await getSettings();
-  const { sessionMinutes, autoRollover, showBadge, blockDuringFocus, blocklist, guardSettingsPages } =
-    settings.focusBoard;
+  const {
+    sessionMinutes,
+    autoRollover,
+    showBadge,
+    blockDuringFocus,
+    blocklist,
+    guardSettingsPages,
+    suggestionsEnabled,
+    suggestionsPath,
+  } = settings.focusBoard;
   const board = await getBoard();
 
   const root = document.createElement('section');
@@ -118,6 +134,94 @@ export async function renderFocusBoardOptionsPanel(featureEnabled: boolean): Pro
   rolloverHelp.textContent =
     'Unfinished Today tasks always carry over — they were the priority yesterday and still are. Only completed ones get cleared.';
 
+  // --- Daily suggestions ---
+  const sugHeader = document.createElement('h3');
+  sugHeader.className = 'subheader';
+  sugHeader.textContent = 'Daily suggestions';
+
+  const sugToggle = checkboxRow(
+    'Offer suggestions from the desktop agent',
+    suggestionsEnabled,
+    !featureEnabled,
+    (checked) => void patchSettings({ focusBoard: { suggestionsEnabled: checked } }),
+  );
+
+  const pathLabel = document.createElement('label');
+  pathLabel.className = 'np-key-label';
+  pathLabel.textContent = 'Suggestions file (absolute path)';
+  const pathRow = document.createElement('div');
+  pathRow.className = 'fb-path-row';
+  const pathInput = document.createElement('input');
+  pathInput.type = 'text';
+  pathInput.className = 'np-key-input';
+  pathInput.placeholder = '/Users/you/.browser-tools/suggestions.json';
+  pathInput.value = suggestionsPath;
+  pathInput.disabled = !featureEnabled || !suggestionsEnabled;
+  const detectBtn = document.createElement('button');
+  detectBtn.type = 'button';
+  detectBtn.className = 'fb-detect-btn';
+  detectBtn.textContent = 'Detect';
+  detectBtn.disabled = pathInput.disabled;
+  const sugStatus = document.createElement('p');
+  sugStatus.className = 'muted-note';
+
+  async function refreshStatus(path: string): Promise<void> {
+    if (!path.trim()) {
+      sugStatus.textContent = 'No path set. Click Detect, or paste the absolute path.';
+      return;
+    }
+    const result = await loadSuggestions(toFileUrl(path));
+    if (result.status === 'ok') {
+      const when = result.generatedAt ? new Date(result.generatedAt).toLocaleString() : 'unknown time';
+      sugStatus.textContent = `${result.suggestions.length} suggestion${result.suggestions.length === 1 ? '' : 's'} · written ${when}`;
+    } else if (result.status === 'empty') {
+      sugStatus.textContent = 'File read fine, but it contains no suggestions yet.';
+    } else {
+      sugStatus.textContent = result.message ?? 'Could not read the file.';
+    }
+  }
+  void refreshStatus(suggestionsPath);
+
+  pathInput.addEventListener('change', () => {
+    const value = pathInput.value.trim();
+    void patchSettings({ focusBoard: { suggestionsPath: value } });
+    void refreshStatus(value);
+  });
+  detectBtn.addEventListener('click', () => {
+    detectBtn.disabled = true;
+    sugStatus.textContent = 'Looking…';
+    void detectSuggestionsPath()
+      .then(async (found) => {
+        if (!found) {
+          sugStatus.textContent =
+            'Could not read any home directory. Enable "Allow access to file URLs" for this extension, then try again.';
+          return;
+        }
+        pathInput.value = found;
+        await patchSettings({ focusBoard: { suggestionsPath: found } });
+        await refreshStatus(found);
+      })
+      .finally(() => {
+        detectBtn.disabled = false;
+      });
+  });
+  pathRow.append(pathInput, detectBtn);
+  pathLabel.append(pathRow);
+
+  const sugHelp = document.createElement('p');
+  sugHelp.className = 'muted-note';
+  sugHelp.innerHTML =
+    'The extension cannot reach Fathom or Gmail itself — those live behind desktop connectors. A scheduled agent reads them each morning, scores each item 1-10 on whether doing it makes everything else easier or irrelevant, and writes this file. Suggestions never enter Today on their own; you accept one, which is the moment it earns a slot. Reading a local file needs <strong>Allow access to file URLs</strong> ticked on this extension\'s card in <code>chrome://extensions</code> — do that outside a focus session, since the guard hides that page.';
+
+  const dismissedBtn = document.createElement('button');
+  dismissedBtn.type = 'button';
+  dismissedBtn.className = 'danger-button';
+  dismissedBtn.textContent = `Un-dismiss ${board.dismissed.length} suggestion${board.dismissed.length === 1 ? '' : 's'}`;
+  dismissedBtn.disabled = board.dismissed.length === 0;
+  dismissedBtn.addEventListener('click', () => {
+    void clearDismissed();
+  });
+
   // --- Board stats ---
   const statsHeader = document.createElement('h3');
   statsHeader.className = 'subheader';
@@ -183,6 +287,12 @@ export async function renderFocusBoardOptionsPanel(featureEnabled: boolean): Pro
     listStatus,
     blockHelp,
     caveat,
+    sugHeader,
+    sugToggle,
+    pathLabel,
+    sugStatus,
+    sugHelp,
+    dismissedBtn,
     behaviourHeader,
     rolloverToggle,
     badgeToggle,
