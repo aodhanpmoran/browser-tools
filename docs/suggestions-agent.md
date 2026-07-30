@@ -111,13 +111,53 @@ extension de-duplicates by title, but a clean file is easier to read.
 > `docs/suggestions-agent.md`. Overwrite the file. Do not add anything to the
 > board itself.
 
+## It has to run locally
+
+**A cloud routine cannot do this job.** Scheduled Claude agents (`/schedule`,
+claude.ai routines) run in Anthropic's infrastructure with their own checkout —
+they have no route to this Mac's filesystem, so they cannot write the file the
+extension reads. Don't reach for one; it will look like it works and produce
+nothing locally.
+
+Headless local Claude Code *does* reach the claude.ai MCP connectors, which is
+what makes the local path viable. Verified directly:
+
+```sh
+claude -p "Call the Fathom list_meetings tool for the last 7 days. Reply with only the number." \
+  --allowedTools "mcp__claude_ai_Fathom__list_meetings"
+```
+
+So the schedule is a **launchd agent** running `scripts/refresh-suggestions.sh`.
+The script asks Claude for JSON on stdout, then validates it in Python and only
+swaps it into place if it parses — a bad run leaves yesterday's good
+suggestions intact rather than replacing them with garbage.
+
+| Piece | Path |
+|---|---|
+| Script | `scripts/refresh-suggestions.sh` |
+| launchd job | `~/Library/LaunchAgents/com.aodhanpmoran.browser-tools-suggestions.plist` |
+| Output | `~/.browser-tools/suggestions.json` |
+| Logs | `~/.browser-tools/refresh.log`, `launchd.{out,err}.log` |
+
+Runs daily at 07:00 local. launchd handles DST and fires on wake if the Mac was
+asleep at the scheduled moment.
+
+```sh
+launchctl list | grep browser-tools          # is it registered?
+./scripts/refresh-suggestions.sh             # run it now
+launchctl unload ~/Library/LaunchAgents/com.aodhanpmoran.browser-tools-suggestions.plist
+```
+
+Note `launchd` gives a near-empty `PATH`, so the plist sets one explicitly —
+otherwise `claude` is not found and the job fails silently.
+
 ## Setup on a new machine
 
 1. Load the extension, open Settings → Focus Board → **Detect** to fill the path.
 2. Tick **Allow access to file URLs** on the extension's card in
    `chrome://extensions`. Do it outside a focus session — the blocker guards
    that page.
-3. Schedule the prompt above to run each morning.
+3. Install the launchd job above (adjust the hardcoded home path in the plist).
 
 If the file is missing the section simply does not render; that is the normal
 state before the first run, not an error.

@@ -78,7 +78,9 @@ adding a feature means adding it there plus a settings shape in `src/shared/stor
   different range — `applyNetworkRules` clears its whole range on every write.
 - Focus Board reads daily suggestions from a JSON file written by an outside
   scheduled agent (`docs/suggestions-agent.md`), because the extension cannot reach
-  Fathom or Gmail — those are desktop MCP connectors with no in-browser route. Reading
+  Fathom or Gmail — those are desktop MCP connectors with no in-browser route. The agent
+  must run **locally** (launchd + `scripts/refresh-suggestions.sh`); a cloud routine has
+  no access to this machine's filesystem and cannot write the file. Reading
   it needs `file:///*` in `host_permissions` **and** the per-extension "Allow access to
   file URLs" toggle, which only the user can tick.
 - `file://` probes must be time-boxed. A `file://` directory listing returns
