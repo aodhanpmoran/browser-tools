@@ -153,10 +153,11 @@ otherwise `claude` is not found and the job fails silently.
 
 ## Setup on a new machine
 
-1. Load the extension, open Settings → Focus Board → **Detect** to fill the path.
-2. Tick **Allow access to file URLs** on the extension's card in
-   `chrome://extensions`. Do it outside a focus session — the blocker guards
-   that page.
+1. Tick **Allow access to file URLs** on the extension's card in
+   `chrome://extensions` → Details, below *Allow in Incognito*. Only needed for a
+   **Load unpacked** install; launching with `--load-extension` grants it
+   automatically. Do it outside a focus session — the blocker guards that page.
+2. Open Settings → Focus Board → **Detect** to fill in the path.
 3. Install the launchd job above (adjust the hardcoded home path in the plist).
 
 If the file is missing the section simply does not render; that is the normal

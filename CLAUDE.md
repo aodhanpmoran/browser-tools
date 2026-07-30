@@ -80,9 +80,11 @@ adding a feature means adding it there plus a settings shape in `src/shared/stor
   scheduled agent (`docs/suggestions-agent.md`), because the extension cannot reach
   Fathom or Gmail — those are desktop MCP connectors with no in-browser route. The agent
   must run **locally** (launchd + `scripts/refresh-suggestions.sh`); a cloud routine has
-  no access to this machine's filesystem and cannot write the file. Reading
-  it needs `file:///*` in `host_permissions` **and** the per-extension "Allow access to
-  file URLs" toggle, which only the user can tick.
+  no access to this machine's filesystem and cannot write the file. Reading it needs
+  `file:///*` in `host_permissions` **and** the per-extension "Allow access to file
+  URLs" toggle. That toggle is granted automatically when the extension is launched
+  with `--load-extension`, but **not** for a "Load unpacked" install — there only the
+  user can tick it, in `chrome://extensions` → Details.
 - `file://` probes must be time-boxed. A `file://` directory listing returns
   `status: 0` (so `res.ok` is meaningless there) and `/home` on macOS is an autofs
   automount that never answers — an un-timed fetch to it hangs forever. See
@@ -121,11 +123,16 @@ persistence across reload).
 - **Image Picker is untested.** It typechecks and builds and its commit is honest
   about this, but nobody has exercised the scan/download path. Worth a manual pass
   before merging PR #1.
-- **One manual step is still outstanding**, and only the user can do it: tick
-  *Allow access to file URLs* on the extension's card in `chrome://extensions`, then
-  Settings → Focus Board → **Detect**. Until then the Suggested section stays hidden,
-  because reading `~/.browser-tools/suggestions.json` is blocked. This is not a bug to
-  go hunting for.
+- **The suggestions chain is verified working on live data.** As of 30 Jul the
+  Chrome for Testing instance renders five real suggestions ranked 9/8/6/6/2 from
+  Fathom and Gmail. Path already resolved via Settings → Focus Board → **Detect**;
+  *Allow access to file URLs* is already on there, because `--load-extension` grants
+  it automatically. Nothing outstanding for that install.
+- **A "Load unpacked" install into everyday Chrome is different** — it does *not*
+  get file access automatically. There, tick *Allow access to file URLs* on the
+  extension's card in `chrome://extensions` (Details → below *Allow in Incognito*),
+  then hit **Detect**. A hidden Suggested section on a fresh install is almost always
+  this, not a bug to go hunting for.
 - PR #1 has no reviewer and no merge deadline set.
 
 ### Things living outside this repo
