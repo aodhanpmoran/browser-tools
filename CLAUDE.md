@@ -91,10 +91,64 @@ adding a feature means adding it there plus a settings shape in `src/shared/stor
 - `src/features/video-speed/upstream/` is a vendored git subtree of the upstream
   `videospeed` repo (merged in via `2dcfc70`). Treat it as third-party code — patch
   narrowly and keep in mind re-vendoring will overwrite local edits.
+- `npm test` sometimes does not exit when run without a TTY (backgrounded, piped, or
+  from an agent), even though every test has already passed — it hangs after printing
+  the summary. Use `CI=true npx vitest run` in those contexts. A "timed out" test run is
+  usually this, not a failure; read the output before believing the exit code. Note also
+  that `--reporter=basic` does not exist in vitest 4 and errors out; `dot` does.
 
-## State as of 2026-07-06
+## State as of 2026-07-30
 
-Last pushed commit: `07b939a` — added Google Unhobble, Now Playing, and
-Picture-in-Picture, plus supporting popup/options UI rework. Working tree was clean
-after that push. No open branches or in-progress features beyond what's listed above;
-check `git log` and `git status` for anything since.
+`origin/main` is at `4263d2f`. Everything since then is on **`feat/focus-board`**,
+pushed, and open as **PR #1** — reviewed by nobody yet, **not merged**. Working tree
+clean. Four commits on the branch, each building green on its own:
+
+| Commit | What |
+|---|---|
+| `2ce5cbf` | Image Picker — Aodhán's work, sitting uncommitted since 6 Jul, committed as-is |
+| `ee8379e` | Focus Board — board, timer, site blocking |
+| `f3f58e6` | Focus Board — daily suggestions read from a local JSON file |
+| `7f7d2fa` | Focus Board — launchd job that writes that file |
+
+Verification at the branch tip: `npm run typecheck` clean, `npm test` 98 passing,
+`npm run build` clean. Focus Board was also driven end to end in Chromium with the
+extension loaded (cap enforcement, star reassignment, subtask progress, countdown,
+site + subdomain blocking, `chrome://` diversion, suggestion accept/dismiss,
+persistence across reload).
+
+### Open threads
+
+- **Image Picker is untested.** It typechecks and builds and its commit is honest
+  about this, but nobody has exercised the scan/download path. Worth a manual pass
+  before merging PR #1.
+- **One manual step is still outstanding**, and only the user can do it: tick
+  *Allow access to file URLs* on the extension's card in `chrome://extensions`, then
+  Settings → Focus Board → **Detect**. Until then the Suggested section stays hidden,
+  because reading `~/.browser-tools/suggestions.json` is blocked. This is not a bug to
+  go hunting for.
+- PR #1 has no reviewer and no merge deadline set.
+
+### Things living outside this repo
+
+- `~/Library/LaunchAgents/com.aodhanpmoran.browser-tools-suggestions.plist` — loaded,
+  fires daily at 07:00 local, runs `scripts/refresh-suggestions.sh`. The plist
+  hardcodes `/Users/aodhanpmoran` paths, so it does not travel to another machine
+  as-is.
+- `~/.browser-tools/` — `suggestions.json` (real output; first run wrote 5 items
+  scored 9/8/6/6/2), plus `refresh.log` and `launchd.{out,err}.log`.
+- A Chrome for Testing instance may still be running against `dist/` with a persistent
+  profile at `~/.browser-tools-chrome`. Chrome 150 removed the `--load-extension` CLI
+  flag, so the user's normal Chrome cannot be driven that way — load `dist/` through
+  `chrome://extensions` → Load unpacked instead. The Chrome for Testing binary lives
+  under `~/Library/Caches/ms-playwright/chromium-1228/`.
+
+### Deliberate design decisions, so they are not "fixed" later
+
+- **The three-task cap is the feature**, enforced in `focus-board/store.ts`, not just
+  the UI. Do not add an escape hatch.
+- **Suggestions never auto-enter Today.** Accepting one by hand is the moment it earns
+  a slot. An agent must not spend the cap.
+- **`chrome://extensions` blocking is friction, not enforcement**, and cannot be made
+  otherwise from inside an extension. See the Gotchas section.
+- **The suggestions agent must run locally.** A cloud routine cannot write to this
+  machine. See `docs/suggestions-agent.md`.
