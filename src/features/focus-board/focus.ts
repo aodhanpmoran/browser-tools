@@ -1,4 +1,4 @@
-import { getSettings } from '../../shared/storage';
+import { getSettings, setFeatureEnabled } from '../../shared/storage';
 import { buildTodos, paintSpent, restoreFocus } from './board-view';
 import { paintClock, renderTimerPanel } from './timer-panel';
 import { getBoard, rolloverIfNewDay } from './store';
@@ -112,9 +112,26 @@ function dayKeyToNoon(key: string): number {
   return new Date(year, month - 1, day, 12).getTime();
 }
 
+/**
+ * This page is also the new tab page, so a switched-off Focus Board must not
+ * leave a dead end — the way back on is right here, not buried in Settings.
+ */
 function disabledNote(): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'fb-off';
+
   const p = document.createElement('p');
   p.className = 'fb-empty muted';
-  p.textContent = 'Focus Board is switched off. Turn it on in Settings.';
-  return p;
+  p.textContent = 'Focus Board is switched off, so there is nothing to show here.';
+
+  const on = document.createElement('button');
+  on.type = 'button';
+  on.className = 'fb-add-btn';
+  on.textContent = 'Turn Focus Board on';
+  on.addEventListener('click', () => {
+    void setFeatureEnabled('focus-board', true);
+  });
+
+  wrap.append(p, on);
+  return wrap;
 }

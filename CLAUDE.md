@@ -165,9 +165,16 @@ same components.
 - `board-view.ts` (mode-aware to-do builders) and `timer-panel.ts` are shared by
   `popup-panel.ts` and `focus.ts`. `.fb-*` styles live in `focus-board/board.css`,
   linked by both pages; theme tokens are in `src/shared/tokens.css`.
-- `focus.html` is opened only by the extension (popup button, options button), so
-  it is **not** a `web_accessible_resource` — unlike `blocked.html`, which DNR
-  redirects to from web origins.
+- **`focus.html` is the new tab page**, via `chrome_url_overrides.newtab`. Chrome
+  reads that from the manifest at install time, so it **cannot be toggled from
+  settings** — dropping the override means editing `manifest.config.ts` and
+  reloading. Because a new tab must never be a dead end, the page renders a
+  "Turn Focus Board on" button when the feature is switched off rather than a
+  bare note. Nothing on the page autofocuses, so the omnibox keeps keyboard focus
+  and typing in a new tab still searches.
+- `focus.html` is otherwise reached only by the extension itself (popup button,
+  options button), so it is **not** a `web_accessible_resource` — unlike
+  `blocked.html`, which DNR redirects to from web origins.
 - `normaliseBoard` migrates a pre-decoupling `{taskId, startedAt, sessionMinutes}`
   timer on read, so a session running across the update survives it.
 - There is **no pause**, by design. Stop banks the time and ends the run.
