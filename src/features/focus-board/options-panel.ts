@@ -8,9 +8,9 @@ import {
   todayTasks,
 } from './store';
 import { detectSuggestionsPath, loadSuggestions, toFileUrl } from './suggestions';
-import { formatDuration, taskSeconds } from './timer';
+import { formatDuration, formatSessionLength, taskSeconds } from './timer';
 import { MAX_BLOCKED_SITES, normaliseSites } from './blocker';
-import { TODAY_CAP } from './types';
+import { SESSION_MAX_MINUTES, SESSION_MIN_MINUTES, TODAY_CAP } from './types';
 
 export async function renderFocusBoardOptionsPanel(featureEnabled: boolean): Promise<HTMLElement> {
   const settings = await getSettings();
@@ -29,35 +29,26 @@ export async function renderFocusBoardOptionsPanel(featureEnabled: boolean): Pro
   const root = document.createElement('section');
   root.className = 'fb-options-panel';
 
-  // --- Session length ---
-  const sessionHeader = document.createElement('h3');
-  sessionHeader.className = 'subheader';
-  sessionHeader.textContent = 'Session length';
+  // --- The board itself ---
+  const boardHeader = document.createElement('h3');
+  boardHeader.className = 'subheader';
+  boardHeader.textContent = 'The board';
 
-  const sessionRow = document.createElement('div');
-  sessionRow.className = 'range-row';
-  const range = document.createElement('input');
-  range.type = 'range';
-  range.min = '0';
-  range.max = '90';
-  range.step = '5';
-  range.value = String(sessionMinutes);
-  range.disabled = !featureEnabled;
-  const readout = document.createElement('output');
-  readout.className = 'range-readout';
-  readout.textContent = sessionLabel(sessionMinutes);
-  range.addEventListener('input', () => {
-    readout.textContent = sessionLabel(Number.parseInt(range.value, 10));
+  const openBtn = document.createElement('button');
+  openBtn.type = 'button';
+  openBtn.className = 'fb-open-btn';
+  openBtn.textContent = 'Open the full board';
+  openBtn.disabled = !featureEnabled;
+  openBtn.addEventListener('click', () => {
+    void chrome.tabs.create({ url: chrome.runtime.getURL('src/features/focus-board/focus.html') });
   });
-  range.addEventListener('change', () => {
-    void patchSettings({ focusBoard: { sessionMinutes: Number.parseInt(range.value, 10) } });
-  });
-  sessionRow.append(range, readout);
 
+  // Session length is set on the board, next to the clock it governs. Repeating
+  // the control here would give two places to change one number.
   const sessionHelp = document.createElement('p');
   sessionHelp.className = 'muted-note';
   sessionHelp.textContent =
-    'The length pre-selected in the popup. You pick the actual length per session from the dropdown next to Start, so this is just the default. Set it to 0 for an open-ended stopwatch that counts up instead of down.';
+    `Tasks are edited in the full board or the popup. Session length is set there too — the slider beside the clock runs from ${SESSION_MIN_MINUTES} minutes to ${SESSION_MAX_MINUTES / 60} hours, with an ∞ button for an open-ended stopwatch. Last used: ${sessionLabel(sessionMinutes)}. The timer is not tied to a task: it credits whatever is top of Today, and follows along as you tick things off.`;
 
   // --- Blocking ---
   const blockHeader = document.createElement('h3');
@@ -277,8 +268,8 @@ export async function renderFocusBoardOptionsPanel(featureEnabled: boolean): Pro
     'Tasks, subtasks, and tracked time are stored in chrome.storage.local on this machine only. Nothing is synced or sent anywhere.';
 
   root.append(
-    sessionHeader,
-    sessionRow,
+    boardHeader,
+    openBtn,
     sessionHelp,
     blockHeader,
     blockToggle,
@@ -307,7 +298,7 @@ export async function renderFocusBoardOptionsPanel(featureEnabled: boolean): Pro
 }
 
 function sessionLabel(minutes: number): string {
-  return minutes === 0 ? 'stopwatch' : `${minutes} min`;
+  return formatSessionLength(minutes);
 }
 
 function describeList(sites: readonly string[]): string {

@@ -54,7 +54,7 @@ adding a feature means adding it there plus a settings shape in `src/shared/stor
 | Now Playing | `now-playing` | MediaSession/DOM/title detection, optional ACRCloud audio-fingerprint fallback, local history |
 | Picture-in-Picture | `picture-in-picture` | one-click pop-out of largest `<video>` |
 | Image Picker | `image-picker` | scan page/link for images, pick and download |
-| Focus Board | `focus-board` | Basecamp-ish to-dos: hard cap of 3 for Today, one starred "The One", subtasks, per-task timer, site blocking while a session runs, daily agent suggestions |
+| Focus Board | `focus-board` | Basecamp-ish to-dos: hard cap of 3 for Today, one starred "The One", subtasks, a standalone focus timer, site blocking while a session runs, daily agent suggestions. Two surfaces — the popup panel and a full-window tab (`focus.html`) |
 
 ## Gotchas
 
@@ -73,6 +73,27 @@ adding a feature means adding it there plus a settings shape in `src/shared/stor
   removing the extension via the toolbar right-click menu bypasses it entirely. Don't
   "fix" this by reaching for DNR; the platform forbids it. Real enforcement needs an OS
   managed-policy profile (`ExtensionInstallForcelist`), which is outside the extension.
+- **`chrome.storage` read-modify-write races are real, and they present as a
+  write that silently never happened.** Focus Board keeps its whole board under
+  one key, so two concurrent mutations mean the slower one writes a board it read
+  before the faster one landed. This bit hard on 31 Jul: starting a session
+  writes settings *then* the board, the settings write triggers a re-render, and
+  that render's `rolloverIfNewDay` — itself a mutation — read a timer-less board
+  and wrote it back over the timer that had just started. No error, no console
+  output, the timer simply did not start. Fixed by serialising mutations through
+  a promise queue in `store.ts` and by having `mutate` skip the write entirely
+  when `fn` returns the board unchanged. Any new bulk-data store should do both.
+- **Pages that re-render on `chrome.storage.onChanged` must coalesce, not drop.**
+  A `if (rendering) return;` guard loses the event that mattered and leaves stale
+  UI on screen. `focus.ts` sets a `dirty` flag and re-runs instead.
+- Driving the extension with Playwright needs the **full Chromium build**, not
+  the default headless shell — `chromium_headless_shell` cannot load extensions
+  at all, and the symptom is `ERR_ABORTED` on every `chrome-extension://` URL.
+  Pass `executablePath` to
+  `~/Library/Caches/ms-playwright/chromium-1228/chrome-mac-arm64/Google Chrome for Testing.app/...`.
+  The MV3 service worker is event-driven and may never register on its own, so
+  `ctx.serviceWorkers()` can stay empty; derive the unpacked extension id instead
+  — it is `sha256(absolute path)`, first 32 hex digits mapped `0-f` → `a-p`.
 - Focus Board's dynamic DNR rules live in the fixed ID range `9000..9200`
   (`RULE_ID_BASE`/`MAX_BLOCKED_SITES`). Any other feature adding dynamic rules must pick a
   different range — `applyNetworkRules` clears its whole range on every write.
@@ -108,11 +129,10 @@ adding a feature means adding it there plus a settings shape in `src/shared/stor
   usually this, not a failure; read the output before believing the exit code. Note also
   that `--reporter=basic` does not exist in vitest 4 and errors out; `dot` does.
 
-## State as of 2026-07-30
+## State as of 2026-07-31
 
 `origin/main` is at `4263d2f`. Everything since then is on **`feat/focus-board`**,
-pushed, and open as **PR #1** — reviewed by nobody yet, **not merged**. Working tree
-clean. Four commits on the branch, each building green on its own:
+open as **PR #1** — reviewed by nobody yet, **not merged**. Working tree clean.
 
 | Commit | What |
 |---|---|
@@ -120,12 +140,37 @@ clean. Four commits on the branch, each building green on its own:
 | `ee8379e` | Focus Board — board, timer, site blocking |
 | `f3f58e6` | Focus Board — daily suggestions read from a local JSON file |
 | `7f7d2fa` | Focus Board — launchd job that writes that file |
+| `ea825ed` | Focus Board — blocking banner reports reality, not intent |
+| `f37c36b` | Spec for the full-window tab and the standalone timer |
+| *(31 Jul)* | Focus Board — full-window tab, timer decoupled from tasks, 5m–2h slider |
 
-Verification at the branch tip: `npm run typecheck` clean, `npm test` 98 passing,
-`npm run build` clean. Focus Board was also driven end to end in Chromium with the
-extension loaded (cap enforcement, star reassignment, subtask progress, countdown,
-site + subdomain blocking, `chrome://` diversion, suggestion accept/dismiss,
-persistence across reload).
+Verification at the branch tip: `npm run typecheck` clean, `CI=true npx vitest run`
+125 passing, `npm run build` clean. The 31 Jul work was also driven end to end in
+Chrome for Testing: two-column tab, click-to-edit task and subtask titles with
+Escape reverting, "Now" following the ticked state, a 2-hour run started from the
+slider, the finish line surviving a mid-run subtask tick, time banking onto the
+credited task on stop, the three-task cap holding, and the popup rendering the
+same components.
+
+### Focus Board shape as of 31 Jul
+
+- **The timer is not attached to a task.** `ActiveTimer` has no `taskId`; it
+  carries `creditTaskId`/`creditSince`, re-pointed by `settleCredit` inside
+  `mutate` whenever the top open Today task changes. Starring is the only way to
+  re-point it — deliberately no second control.
+- Session length is a 5m–2h slider (5-minute steps) plus a separate `∞` toggle,
+  both on the board itself. The options page no longer duplicates that control;
+  `SESSION_MIN_MINUTES`/`SESSION_MAX_MINUTES`/`SESSION_STEP_MINUTES` are constants
+  in `types.ts`, not settings.
+- `board-view.ts` (mode-aware to-do builders) and `timer-panel.ts` are shared by
+  `popup-panel.ts` and `focus.ts`. `.fb-*` styles live in `focus-board/board.css`,
+  linked by both pages; theme tokens are in `src/shared/tokens.css`.
+- `focus.html` is opened only by the extension (popup button, options button), so
+  it is **not** a `web_accessible_resource` — unlike `blocked.html`, which DNR
+  redirects to from web origins.
+- `normaliseBoard` migrates a pre-decoupling `{taskId, startedAt, sessionMinutes}`
+  timer on read, so a session running across the update survives it.
+- There is **no pause**, by design. Stop banks the time and ends the run.
 
 ### Open threads
 
@@ -162,6 +207,9 @@ persistence across reload).
 
 - **The three-task cap is the feature**, enforced in `focus-board/store.ts`, not just
   the UI. Do not add an escape hatch.
+- **The timer reads the board; it is never pointed at a task by hand.** Adding a
+  per-card start button would put the "what am I on?" decision in two places and
+  let them disagree. The star is the single lever.
 - **Suggestions never auto-enter Today.** Accepting one by hand is the moment it earns
   a slot. An agent must not spend the cap.
 - **`chrome://extensions` blocking is friction, not enforcement**, and cannot be made

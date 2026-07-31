@@ -169,3 +169,33 @@ still lifts at the end.
 - Pausing a run.
 - Reordering tasks by drag.
 - A "back to the board" link on `blocked.html`.
+
+## As built — where the implementation departed from the above
+
+- **`currentTask` lives in `store.ts`, not `timer.ts`.** It needs `todayTasks`,
+  which is a board selector; importing that into `timer.ts` would have made the
+  two modules circular. `currentSubtask` stayed in `timer.ts` — it only needs a
+  task. Both are pure and unit-tested.
+- **`mutate` gained a write queue and a no-op guard**, which the design did not
+  anticipate. Mutations are read-modify-write against one storage key, and two in
+  flight at once means the slower one writes a board it read before the faster
+  one landed. Starting a session hits this exactly: it writes settings then the
+  board, the settings write triggers a re-render, and that render's
+  `rolloverIfNewDay` is itself a mutation that read a timer-less board and wrote
+  it back over the timer. The timer silently failed to start, with no error.
+  Fixed by serialising mutations through a promise chain and by skipping the
+  write when `fn` returns the board unchanged.
+- **`focus.ts` coalesces renders rather than dropping them.** The first cut used
+  a plain `if (rendering) return;` guard, which discarded the storage event that
+  mattered and left an idle-looking timer on screen while one was running. It now
+  sets a `dirty` flag and re-runs.
+- **The options page lost its session-length slider** instead of gaining a
+  wider one. With the slider on the board next to the clock it governs, a second
+  copy in settings would have been two places to change one number. That section
+  is now an "Open the full board" button plus a note saying where length is set.
+- **`src/shared/tokens.css` is new.** The design said `board.css` would be linked
+  by both pages, but both pages also need the theme variables, and duplicating
+  them in `popup.css` and `board.css` would let the two surfaces drift.
+- **`blocked.ts` now uses `currentTask`** rather than the timer's task id, which
+  no longer exists. The block page and the timer panel therefore always name the
+  same task.

@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Focus Board</title>
+    <link rel="stylesheet" href="./board.css" />
+    <link rel="stylesheet" href="./focus.css" />
+  </head>
+  <body>
+    <header class="fb-page-head">
+      <h1>Focus Board</h1>
+      <div class="fb-page-head-actions">
+        <span class="fb-page-date" id="today-date"></span>
+        <button type="button" id="open-options" class="fb-link-btn">Settings</button>
+      </div>
+    </header>
+
+    <main class="fb-page" id="page">
+      <div class="fb-col-todos" id="todos"></div>
+      <aside class="fb-col-timer" id="timer"></aside>
+    </main>
+
+    <script type="module" src="./focus.ts"></script>
+  </body>
+</html>

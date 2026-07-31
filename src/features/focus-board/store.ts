@@ -1,16 +1,59 @@
-import { dayKey, runSeconds } from './timer';
-import { EMPTY_BOARD, TODAY_CAP, type BoardState, type Lane, type Task } from './types';
+import { creditSeconds, dayKey } from './timer';
+import {
+  EMPTY_BOARD,
+  TODAY_CAP,
+  type ActiveTimer,
+  type BoardState,
+  type Lane,
+  type LegacyActiveTimer,
+  type Task,
+} from './types';
 
 const KEY = 'focusBoard';
 
 export async function getBoard(): Promise<BoardState> {
   const result = await chrome.storage.local.get(KEY);
-  const stored = result[KEY] as Partial<BoardState> | undefined;
+  return normaliseBoard(result[KEY]);
+}
+
+/**
+ * Shapes whatever is on disk into a BoardState, including a timer written by
+ * the pre-decoupling build. Migrating rather than dropping means a session
+ * running when the extension updates survives the update.
+ */
+export function normaliseBoard(stored: unknown): BoardState {
+  if (!stored || typeof stored !== 'object') return structuredClone(EMPTY_BOARD);
+  const board = stored as Partial<BoardState> & { timer?: unknown };
   return {
-    tasks: Array.isArray(stored?.tasks) ? stored.tasks : [],
-    timer: stored?.timer ?? null,
-    lastRollover: typeof stored?.lastRollover === 'string' ? stored.lastRollover : '',
-    dismissed: Array.isArray(stored?.dismissed) ? stored.dismissed : [],
+    tasks: Array.isArray(board.tasks) ? board.tasks : [],
+    timer: normaliseTimer(board.timer),
+    lastRollover: typeof board.lastRollover === 'string' ? board.lastRollover : '',
+    dismissed: Array.isArray(board.dismissed) ? board.dismissed : [],
+  };
+}
+
+function normaliseTimer(stored: unknown): ActiveTimer | null {
+  if (!stored || typeof stored !== 'object') return null;
+  const timer = stored as Partial<ActiveTimer> & Partial<LegacyActiveTimer>;
+  if (typeof timer.startedAt !== 'number') return null;
+  const sessionMinutes = typeof timer.sessionMinutes === 'number' ? timer.sessionMinutes : 0;
+
+  // Legacy shape: one task owned the clock for its whole run, so all of the
+  // time so far belongs to that task and none of it has been settled yet.
+  if (typeof timer.creditSince !== 'number') {
+    return {
+      startedAt: timer.startedAt,
+      sessionMinutes,
+      creditTaskId: typeof timer.taskId === 'string' ? timer.taskId : null,
+      creditSince: timer.startedAt,
+    };
+  }
+
+  return {
+    startedAt: timer.startedAt,
+    sessionMinutes,
+    creditTaskId: typeof timer.creditTaskId === 'string' ? timer.creditTaskId : null,
+    creditSince: timer.creditSince,
   };
 }
 
@@ -19,9 +62,35 @@ async function setBoard(next: BoardState): Promise<BoardState> {
   return next;
 }
 
-/** Read-modify-write helper. Every mutation below goes through this. */
+/**
+ * Serialises mutations within a page. Every mutation here is a read-modify-write
+ * against one storage key, so two in flight at once means the slower one writes
+ * a board it read before the faster one landed — silently undoing it.
+ *
+ * That is not theoretical: starting a session writes settings and the board in
+ * quick succession, and the settings write triggers a re-render whose rollover
+ * check is itself a mutation. Without this queue the rollover read a timer-less
+ * board and wrote it back over the timer that had just started.
+ */
+let writeQueue: Promise<unknown> = Promise.resolve();
+
+/**
+ * Read-modify-write helper. Every mutation below goes through this, and every
+ * one of them settles the timer's credit afterwards — completing a task,
+ * starring another, deleting the current one and promoting from the backlog all
+ * change what you are working on, and none of them should have to remember.
+ */
 async function mutate(fn: (board: BoardState) => BoardState): Promise<BoardState> {
-  return setBoard(fn(await getBoard()));
+  const run = writeQueue.then(async () => {
+    const board = await getBoard();
+    const next = settleCredit(fn(board), Date.now());
+    // A mutation that changed nothing must not write: the write would still
+    // land as a storage event and could stamp on a concurrent one from another
+    // page. `fn` returns the board it was given when there is nothing to do.
+    return next === board ? board : setBoard(next);
+  });
+  writeQueue = run.catch(() => undefined);
+  return run;
 }
 
 export async function clearBoard(): Promise<void> {
@@ -36,6 +105,43 @@ export function todayTasks(board: BoardState): Task[] {
 
 export function backlogTasks(board: BoardState): Task[] {
   return board.tasks.filter((t) => t.lane === 'backlog').sort((a, b) => b.createdAt - a.createdAt);
+}
+
+/**
+ * What you are on right now: the top open task in Today. Because `todayTasks`
+ * sorts The One first, starring a task is how you re-point the timer — there is
+ * no second mechanism to keep in step with the star.
+ */
+export function currentTask(board: BoardState): Task | undefined {
+  return todayTasks(board).find((t) => !t.done);
+}
+
+/**
+ * Points the timer's credit at whatever is current, folding what the outgoing
+ * task earned into its banked seconds first.
+ *
+ * Only acts when the current task actually changed. Re-settling on every write
+ * would drop the sub-second remainder each time, and the drift would be real
+ * over a two-hour block.
+ *
+ * Time credited to a task that has since been deleted goes with it — there is
+ * nowhere honest to put it.
+ */
+export function settleCredit(board: BoardState, now: number): BoardState {
+  if (!board.timer) return board;
+  const nextId = currentTask(board)?.id ?? null;
+  if (nextId === board.timer.creditTaskId) return board;
+
+  const outgoingId = board.timer.creditTaskId;
+  const earned = outgoingId ? creditSeconds(board.timer, outgoingId, now) : 0;
+  const tasks =
+    earned > 0
+      ? board.tasks.map((t) =>
+          t.id === outgoingId ? { ...t, secondsSpent: t.secondsSpent + earned } : t,
+        )
+      : board.tasks;
+
+  return { ...board, tasks, timer: { ...board.timer, creditTaskId: nextId, creditSince: now } };
 }
 
 /** Open (not-done) Today tasks — this is what the cap counts. */
@@ -92,7 +198,6 @@ export async function deleteTask(id: string): Promise<BoardState> {
   return mutate((board) => ({
     ...board,
     tasks: board.tasks.filter((t) => t.id !== id),
-    timer: board.timer?.taskId === id ? null : board.timer,
   }));
 }
 
@@ -116,7 +221,6 @@ export async function demoteToBacklog(id: string): Promise<BoardState> {
     tasks: board.tasks.map((t) =>
       t.id === id ? { ...t, lane: 'backlog' as Lane, starred: false } : t,
     ),
-    timer: board.timer?.taskId === id ? null : board.timer,
   }));
 }
 
@@ -133,8 +237,6 @@ export async function toggleTaskDone(id: string): Promise<BoardState> {
     const task = findTask(board, id);
     if (!task) return board;
     const done = !task.done;
-    // Completing a task banks any live timer time and stops the clock.
-    const banked = done ? runSeconds(board.timer, id, Date.now()) : 0;
     return {
       ...board,
       tasks: board.tasks.map((t) =>
@@ -143,13 +245,11 @@ export async function toggleTaskDone(id: string): Promise<BoardState> {
               ...t,
               done,
               completedAt: done ? Date.now() : undefined,
-              secondsSpent: t.secondsSpent + banked,
               // Finishing a task also completes every subtask — no orphan checkboxes.
               subtasks: done ? t.subtasks.map((s) => ({ ...s, done: true })) : t.subtasks,
             }
           : t,
       ),
-      timer: done && board.timer?.taskId === id ? null : board.timer,
     };
   });
 }
@@ -162,6 +262,26 @@ export async function addSubtask(taskId: string, title: string): Promise<BoardSt
     tasks: board.tasks.map((t) =>
       t.id === taskId
         ? { ...t, subtasks: [...t.subtasks, { id: newId(), title: trimmed, done: false }] }
+        : t,
+    ),
+  }));
+}
+
+export async function renameSubtask(
+  taskId: string,
+  subtaskId: string,
+  title: string,
+): Promise<BoardState> {
+  const trimmed = title.trim();
+  if (!trimmed) return getBoard();
+  return mutate((board) => ({
+    ...board,
+    tasks: board.tasks.map((t) =>
+      t.id === taskId
+        ? {
+            ...t,
+            subtasks: t.subtasks.map((s) => (s.id === subtaskId ? { ...s, title: trimmed } : s)),
+          }
         : t,
     ),
   }));
@@ -191,40 +311,46 @@ export async function deleteSubtask(taskId: string, subtaskId: string): Promise<
 }
 
 /**
- * Starts (or switches) the timer for a given number of minutes (0 = open-ended
- * stopwatch). Banks the outgoing task's run first.
+ * Starts a run of the given length (0 = open-ended stopwatch), crediting
+ * whatever is current. Takes no task id: the board already knows what you are
+ * on, and asking again would be a second decision on top of the star.
  */
-export async function startTimer(taskId: string, sessionMinutes: number): Promise<BoardState> {
+export async function startTimer(sessionMinutes: number): Promise<BoardState> {
   return mutate((board) => {
-    const banked = bankRun(board);
+    const now = Date.now();
+    const settled = settleCredit(board, now);
     return {
-      ...banked,
-      timer: { taskId, startedAt: Date.now(), sessionMinutes: Math.max(0, sessionMinutes) },
+      ...settled,
+      timer: {
+        startedAt: now,
+        sessionMinutes: Math.max(0, sessionMinutes),
+        creditTaskId: currentTask(settled)?.id ?? null,
+        creditSince: now,
+      },
     };
   });
 }
 
+/** Ends the run, banking whatever the current task has earned since the last settle. */
 export async function stopTimer(): Promise<BoardState> {
-  return mutate((board) => ({ ...bankRun(board), timer: null }));
-}
-
-export async function toggleTimer(taskId: string, sessionMinutes: number): Promise<BoardState> {
-  const board = await getBoard();
-  return board.timer?.taskId === taskId ? stopTimer() : startTimer(taskId, sessionMinutes);
-}
-
-/** Folds the live run into its task's banked seconds. Timer itself is untouched. */
-function bankRun(board: BoardState): BoardState {
-  if (!board.timer) return board;
-  const seconds = runSeconds(board.timer, board.timer.taskId, Date.now());
-  if (seconds <= 0) return board;
-  const taskId = board.timer.taskId;
-  return {
-    ...board,
-    tasks: board.tasks.map((t) =>
-      t.id === taskId ? { ...t, secondsSpent: t.secondsSpent + seconds } : t,
-    ),
-  };
+  return mutate((board) => {
+    if (!board.timer) return board;
+    const now = Date.now();
+    const earned = board.timer.creditTaskId
+      ? creditSeconds(board.timer, board.timer.creditTaskId, now)
+      : 0;
+    const creditTaskId = board.timer.creditTaskId;
+    return {
+      ...board,
+      tasks:
+        earned > 0
+          ? board.tasks.map((t) =>
+              t.id === creditTaskId ? { ...t, secondsSpent: t.secondsSpent + earned } : t,
+            )
+          : board.tasks,
+      timer: null,
+    };
+  });
 }
 
 export async function dismissSuggestion(id: string): Promise<BoardState> {

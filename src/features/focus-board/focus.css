@@ -1,0 +1,108 @@
+/*
+ * Layout for the standalone Focus Board tab. Components themselves come from
+ * board.css — this file only decides where they sit in a full window.
+ */
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  min-height: 100vh;
+}
+
+.fb-page-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 28px 24px 16px;
+}
+
+.fb-page-head h1 {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.fb-page-head-actions {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+
+.fb-page-date {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.fb-link-btn {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 12.5px;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.fb-link-btn:hover {
+  color: var(--fg);
+}
+
+/* To-dos lead; the timer holds the right rail and stays put as the list grows. */
+.fb-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 28px;
+  align-items: start;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 0 24px 64px;
+}
+
+.fb-col-timer {
+  position: sticky;
+  top: 24px;
+}
+
+/* Slightly roomier than the popup — there is space for it here. */
+.fb-page .fb-card {
+  padding: 12px 14px;
+  gap: 9px;
+}
+
+.fb-page .fb-title {
+  font-size: 14px;
+}
+
+.fb-page .fb-sub-title {
+  font-size: 13px;
+}
+
+.fb-page .fb-add-input,
+.fb-page .fb-sub-input {
+  font-size: 13px;
+  padding: 8px 11px;
+}
+
+.fb-page .fb {
+  gap: 14px;
+}
+
+/*
+ * Below this the right rail no longer has room to be a rail. The timer goes
+ * first when stacked — it is the thing you came to start.
+ */
+@media (max-width: 900px) {
+  .fb-page {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+
+  .fb-col-timer {
+    position: static;
+    order: -1;
+  }
+}

@@ -1,14 +1,23 @@
-import type { ActiveTimer, Task } from './types';
+import type { ActiveTimer, Subtask, Task } from './types';
 
-/** Seconds the current timer run has been going. 0 when the timer is not this task's. */
-export function runSeconds(timer: ActiveTimer | null, taskId: string, now: number): number {
-  if (!timer || timer.taskId !== taskId) return 0;
+/** Seconds the current run has been going, regardless of who it is crediting. */
+export function runSeconds(timer: ActiveTimer | null, now: number): number {
+  if (!timer) return 0;
   return Math.max(0, Math.floor((now - timer.startedAt) / 1000));
 }
 
-/** Total time on a task: banked seconds plus the live run, if any. */
+/**
+ * Seconds accrued to the timer's current task since it was last settled. This
+ * is the slice that has not been folded into `secondsSpent` yet.
+ */
+export function creditSeconds(timer: ActiveTimer | null, taskId: string, now: number): number {
+  if (!timer || timer.creditTaskId !== taskId) return 0;
+  return Math.max(0, Math.floor((now - timer.creditSince) / 1000));
+}
+
+/** Total time on a task: banked seconds plus the un-settled slice, if it is the one being credited. */
 export function taskSeconds(task: Task, timer: ActiveTimer | null, now: number): number {
-  return task.secondsSpent + runSeconds(timer, task.id, now);
+  return task.secondsSpent + creditSeconds(timer, task.id, now);
 }
 
 /**
@@ -33,6 +42,11 @@ export function isSessionOver(timer: ActiveTimer | null, now: number): boolean {
   return endsAt !== null && now >= endsAt;
 }
 
+/** The first unticked subtask — what "and right now, this bit" points at. */
+export function currentSubtask(task: Task | undefined): Subtask | undefined {
+  return task?.subtasks.find((s) => !s.done);
+}
+
 /** m:ss under an hour, h:mm above it. */
 export function formatDuration(seconds: number): string {
   const total = Math.max(0, Math.floor(seconds));
@@ -46,12 +60,31 @@ export function formatDuration(seconds: number): string {
   return `${mins}:${String(secs).padStart(2, '0')}`;
 }
 
+/** Big-clock form: always h:mm:ss above an hour so a 2h block reads as one. */
+export function formatClock(seconds: number): string {
+  const total = Math.max(0, Math.floor(seconds));
+  const hours = Math.floor(total / 3600);
+  const mins = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+  const tail = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  return hours > 0 ? `${hours}:${tail}` : tail;
+}
+
 /** Short badge text: minutes only, capped to 4 chars so Chrome doesn't clip it. */
 export function formatBadge(seconds: number): string {
   const mins = Math.floor(Math.max(0, seconds) / 60);
   if (mins < 60) return String(mins);
   const hours = Math.floor(mins / 60);
   return `${hours}h`;
+}
+
+/** "50 min" / "1h 30m" / "stopwatch" — the slider's readout. */
+export function formatSessionLength(minutes: number): string {
+  if (minutes <= 0) return 'stopwatch';
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return mins === 0 ? `${hours}h` : `${hours}h ${mins}m`;
 }
 
 export function countDone(subtasks: readonly { done: boolean }[]): number {

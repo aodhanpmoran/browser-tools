@@ -1,4 +1,4 @@
-import { getBoard } from './store';
+import { currentTask, getBoard } from './store';
 import { countDone, formatDuration, sessionRemaining } from './timer';
 
 const clockEl = document.querySelector<HTMLElement>('#clock')!;
@@ -43,7 +43,9 @@ async function render(): Promise<void> {
       ? 'Open-ended session running. Stop it from the extension popup.'
       : `left in this session${from && from !== 'settings' ? ` · ${from} is blocked` : ''}`;
 
-  const task = board.tasks.find((t) => t.id === board.timer!.taskId);
+  // Same "what am I on" the timer panel shows, so the block page and the board
+  // never disagree about why you are being kept out of somewhere.
+  const task = currentTask(board);
   if (!task) {
     cardEl.hidden = true;
     return;

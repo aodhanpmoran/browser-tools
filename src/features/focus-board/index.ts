@@ -132,7 +132,7 @@ async function refreshBadge(
   const now = Date.now();
   const remaining = sessionRemaining(board.timer, now);
   if (remaining === null) {
-    await setBadge(formatBadge(runSeconds(board.timer, board.timer.taskId, now)), RUNNING_COLOR);
+    await setBadge(formatBadge(runSeconds(board.timer, now)), RUNNING_COLOR);
     return;
   }
   // Round up so a 24:30 remainder reads "25", not "24" — a countdown that hits

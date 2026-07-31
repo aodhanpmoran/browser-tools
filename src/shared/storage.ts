@@ -32,10 +32,11 @@ export interface NowPlayingSettings {
 }
 
 export interface FocusBoardSettings {
-  /** Default length of a focus run in minutes. 0 means an open-ended stopwatch. */
+  /**
+   * Length of a focus run in minutes, remembered from the last time you moved
+   * the slider. 0 means an open-ended stopwatch.
+   */
   sessionMinutes: number;
-  /** Durations offered in the popup's picker. 0 is the stopwatch option. */
-  sessionPresets: number[];
   /** Clear completed tasks at the start of each local day. */
   autoRollover: boolean;
   /** Mirror the running timer on the toolbar badge. */
@@ -102,7 +103,6 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   focusBoard: {
     sessionMinutes: 25,
-    sessionPresets: [15, 25, 50, 90, 0],
     autoRollover: true,
     showBadge: true,
     blockDuringFocus: true,
