@@ -8,6 +8,12 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     target: 'esnext',
+    rollupOptions: {
+      input: {
+        'image-picker-grid': 'src/features/image-picker/grid.html',
+        'focus-board-blocked': 'src/features/focus-board/blocked.html',
+      },
+    },
   },
   server: {
     port: 5173,

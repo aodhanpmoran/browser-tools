@@ -26,8 +26,25 @@ export default defineManifest({
     'webNavigation',
     'tabCapture',
     'scripting',
+    'downloads',
+    'declarativeNetRequest',
   ],
-  host_permissions: ['<all_urls>'],
+  // `file:///*` is not covered by <all_urls>; Focus Board needs it to read the
+  // agent-written suggestions file. Still gated behind the per-extension
+  // "Allow access to file URLs" toggle the user must tick once.
+  host_permissions: ['<all_urls>', 'file:///*'],
+  web_accessible_resources: [
+    {
+      resources: ['src/features/image-picker/grid.html'],
+      matches: ['<all_urls>'],
+    },
+    {
+      // declarativeNetRequest redirects blocked navigations here, so the page
+      // must be reachable from any origin.
+      resources: ['src/features/focus-board/blocked.html'],
+      matches: ['<all_urls>'],
+    },
+  ],
   content_scripts: [
     {
       matches: allHostPatterns(),

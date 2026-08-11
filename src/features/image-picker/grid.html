@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Image Picker — Browser Tools</title>
+    <link rel="stylesheet" href="./grid.css" />
+  </head>
+  <body>
+    <header class="bar">
+      <div class="bar-title">
+        <span class="bar-icon">🖼</span>
+        <div>
+          <h1>Image Picker</h1>
+          <p class="source" id="source"></p>
+        </div>
+      </div>
+      <form class="url-form" id="url-form">
+        <input
+          type="url"
+          id="url-input"
+          class="url-input"
+          placeholder="Paste a link to scan its images…"
+          autocomplete="off"
+        />
+        <button type="submit" class="btn">Scan URL</button>
+      </form>
+    </header>
+
+    <section class="controls" id="controls" hidden>
+      <label class="check-all">
+        <input type="checkbox" id="select-all" />
+        <span id="select-all-label">Select all</span>
+      </label>
+      <div class="filters">
+        <label>Min width <input type="number" id="min-w" min="0" step="10" value="0" /></label>
+        <label>Min height <input type="number" id="min-h" min="0" step="10" value="0" /></label>
+      </div>
+      <div class="spacer"></div>
+      <button type="button" class="btn primary" id="download-btn" disabled>Download selected</button>
+    </section>
+
+    <main class="status" id="status">Loading…</main>
+    <main class="grid" id="grid" hidden></main>
+
+    <script type="module" src="./grid.ts"></script>
+  </body>
+</html>
