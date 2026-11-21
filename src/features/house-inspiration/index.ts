@@ -19,17 +19,32 @@ export interface HouseInspoPayload {
   pageTitle: string;
 }
 
+// Everything here comes from the web page, so it is untrusted: cap lengths, keep
+// only http(s) URLs and drop control characters before it leaves the browser.
+const MAX_URL = 2048;
+const MAX_TEXT = 2000;
+
+export function cleanText(value: string | undefined, max: number): string {
+  // eslint-disable-next-line no-control-regex
+  return (value ?? '').replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, '').slice(0, max);
+}
+
+export function cleanUrl(value: string | undefined): string {
+  const v = cleanText(value, MAX_URL).trim();
+  return /^https?:\/\//i.test(v) ? v : '';
+}
+
 export function buildPayload(
   info: chrome.contextMenus.OnClickData,
   tab?: chrome.tabs.Tab,
 ): HouseInspoPayload {
   return {
-    mediaType: info.mediaType ?? '',
-    srcUrl: info.srcUrl ?? '',
-    linkUrl: info.linkUrl ?? '',
-    selectionText: info.selectionText ?? '',
-    pageUrl: info.pageUrl ?? tab?.url ?? '',
-    pageTitle: tab?.title ?? '',
+    mediaType: cleanText(info.mediaType, 20),
+    srcUrl: cleanUrl(info.srcUrl),
+    linkUrl: cleanUrl(info.linkUrl),
+    selectionText: cleanText(info.selectionText, MAX_TEXT),
+    pageUrl: cleanUrl(info.pageUrl ?? tab?.url),
+    pageTitle: cleanText(tab?.title, 300),
   };
 }
 
