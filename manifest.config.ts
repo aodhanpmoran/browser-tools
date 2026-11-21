@@ -91,11 +91,6 @@ export default defineManifest({
       run_at: 'document_idle',
     },
     {
-      matches: ['http://*/*', 'https://*/*'],
-      js: ['src/features/now-playing/now-playing.content.ts'],
-      run_at: 'document_idle',
-    },
-    {
       matches: ['http://*/*', 'https://*/*', 'file:///*'],
       all_frames: true,
       match_about_blank: true,

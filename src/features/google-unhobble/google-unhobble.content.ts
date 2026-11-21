@@ -18,8 +18,8 @@ let state: State = { featureOn: false, mapsOn: false, viewImageOn: false };
 
 void refreshState();
 
-chrome.storage.onChanged.addListener((_changes, area) => {
-  if (area === 'local') void refreshState();
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.settings) void refreshState();
 });
 
 async function refreshState(): Promise<void> {
@@ -29,6 +29,7 @@ async function refreshState(): Promise<void> {
     mapsOn: settings.googleUnhobble.restoreMapsLink,
     viewImageOn: settings.googleUnhobble.restoreViewImage,
   };
+  syncObserver();
   run();
 }
 
@@ -49,12 +50,29 @@ function removeInjected(): void {
 }
 
 // Re-run on SPA navigation & DOM mutations — Google is a heavy client-side app.
+// Only observed while the feature is on; callbacks are coalesced per frame.
+let framePending = false;
 const observer = new MutationObserver(() => {
-  if (!state.featureOn) return;
-  if (state.mapsOn) ensureMapsLink();
-  if (state.viewImageOn) ensureViewImageButtons();
+  if (framePending) return;
+  framePending = true;
+  requestAnimationFrame(() => {
+    framePending = false;
+    if (!state.featureOn) return;
+    if (state.mapsOn) ensureMapsLink();
+    if (state.viewImageOn) ensureViewImageButtons();
+  });
 });
-observer.observe(document.documentElement, { childList: true, subtree: true });
+let observing = false;
+
+function syncObserver(): void {
+  if (state.featureOn && !observing) {
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+    observing = true;
+  } else if (!state.featureOn && observing) {
+    observer.disconnect();
+    observing = false;
+  }
+}
 
 // -- Maps link ----------------------------------------------------------------
 

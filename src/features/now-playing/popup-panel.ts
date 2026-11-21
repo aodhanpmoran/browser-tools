@@ -1,7 +1,8 @@
 import type { PanelContext, PopupPage } from '../../shared/panel';
 import { emptyNote } from '../../shared/dom';
 import type { NowPlayingSettings } from '../../shared/storage';
-import type { DetectResponse, NowPlaying } from './index';
+import type { NowPlaying } from './index';
+import { detectOnTab } from './inject';
 import { saveTrack } from './history';
 import { runAcrIdentify, type IdentifyResult } from './popup-identify';
 
@@ -26,15 +27,8 @@ async function renderNowPlaying(container: HTMLElement, ctx: PanelContext): Prom
   }
 
   container.replaceChildren(emptyNote('Checking…'));
-  let result: NowPlaying | null = null;
-  try {
-    const res = (await chrome.tabs.sendMessage(tab.id, {
-      kind: 'now-playing.detect',
-    })) as DetectResponse | undefined;
-    result = res?.result ?? null;
-  } catch {
-    // content script not present
-  }
+  // Injected on demand; null for restricted pages (web store etc.).
+  const result: NowPlaying | null = await detectOnTab(tab.id, tab.url);
 
   const children: HTMLElement[] = [];
   if (result) {

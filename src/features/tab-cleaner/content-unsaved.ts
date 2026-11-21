@@ -44,6 +44,7 @@ document.addEventListener(
   { capture: true, passive: true },
 );
 
-window.addEventListener('beforeunload', () => {
+// pagehide (not beforeunload) keeps the page eligible for the back/forward cache.
+window.addEventListener('pagehide', () => {
   report(false);
 });

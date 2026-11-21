@@ -1,6 +1,8 @@
 import { findRuleForHost, type SiteRule } from './rules';
 import { getSettings } from '../../shared/storage';
 
+let lastKey = '';
+
 const STYLE_ID = 'browser-tools-nfe-style';
 const BANNER_ID = 'browser-tools-nfe-banner';
 const BLOCK_ID = 'browser-tools-nfe-block';
@@ -8,15 +10,20 @@ const BLOCK_STYLE_ID = 'browser-tools-nfe-block-style';
 
 void apply();
 
-chrome.storage.onChanged.addListener((_changes, area) => {
-  if (area === 'local') void apply();
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.settings) void apply();
 });
 
 // LinkedIn (and friends) are SPAs — pathname can change without a full page
 // load, so re-evaluate on history pushes/pops.
-hookHistory();
+// The isolated world never sees the page's own history.pushState calls, so use
+// the Navigation API where available.
+const nav = (window as unknown as { navigation?: EventTarget }).navigation;
+// currententrychange fires on every same-document URL change, including
+// intercepted navigations that later fail (navigatesuccess would miss those).
+nav?.addEventListener('currententrychange', () => void apply());
 window.addEventListener('popstate', () => void apply());
-window.addEventListener('browser-tools-nfe-locationchange', () => void apply());
+
 
 async function apply(): Promise<void> {
   const rule = findRuleForHost(location.hostname);
@@ -27,13 +34,21 @@ async function apply(): Promise<void> {
   const siteOn = settings.newsFeedEradicator.sitesEnabled[rule.id] ?? true;
   const showBanner = settings.newsFeedEradicator.showReplacement;
 
+  const active = featureOn && siteOn;
+  const blocked = active && pathMatches(rule, location.pathname);
+  const key = `${active}|${blocked}|${showBanner}`;
+  // Skip the remove/re-inject cycle (and its flash) when nothing changed and
+  // the injected nodes are still in the DOM.
+  if (key === lastKey && injectedPresent(active, blocked)) return;
+  lastKey = key;
+
   removeStyle();
   removeBanner();
   removeBlock();
 
-  if (!featureOn || !siteOn) return;
+  if (!active) return;
 
-  if (pathMatches(rule, location.pathname)) {
+  if (blocked) {
     injectBlock(rule);
     return;
   }
@@ -42,6 +57,15 @@ async function apply(): Promise<void> {
   if (showBanner && rule.replacement) {
     injectBanner(rule.replacement);
   }
+}
+
+function injectedPresent(active: boolean, blocked: boolean): boolean {
+  if (!active) {
+    return !document.getElementById(STYLE_ID) && !document.getElementById(BLOCK_STYLE_ID);
+  }
+  return blocked
+    ? !!document.getElementById(BLOCK_STYLE_ID)
+    : !!document.getElementById(STYLE_ID);
 }
 
 function pathMatches(rule: SiteRule, pathname: string): boolean {
@@ -174,21 +198,3 @@ function removeBlock(): void {
   document.getElementById(BLOCK_STYLE_ID)?.remove();
 }
 
-function hookHistory(): void {
-  const w = window as unknown as { __nfeHistoryHooked?: boolean };
-  if (w.__nfeHistoryHooked) return;
-  w.__nfeHistoryHooked = true;
-  const fire = () => window.dispatchEvent(new Event('browser-tools-nfe-locationchange'));
-  const origPush = history.pushState.bind(history);
-  const origReplace = history.replaceState.bind(history);
-  history.pushState = function (...args: Parameters<typeof history.pushState>) {
-    const r = origPush(...args);
-    fire();
-    return r;
-  };
-  history.replaceState = function (...args: Parameters<typeof history.replaceState>) {
-    const r = origReplace(...args);
-    fire();
-    return r;
-  };
-}

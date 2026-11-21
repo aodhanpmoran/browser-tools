@@ -65,7 +65,7 @@ adding a feature means adding it there plus a settings shape in `src/shared/stor
   the plugin throws a confusing `Content script fileName is undefined: "<path>"` for
   whichever one lost — looks like a missing file, isn't. **Always give each
   `content_scripts` entry a unique filename**, prefixed with the feature name (see
-  `google-unhobble.content.ts`, `now-playing.content.ts`). Same rule applies to
+  `google-unhobble.content.ts`, `content-unsaved.ts`). Same rule applies to
   `all_frames`/`MAIN`-world injected JS.
 - **`chrome://` pages cannot be blocked by any extension.** `declarativeNetRequest` will
   not match them and content scripts cannot run there, so Focus Board's "lock
