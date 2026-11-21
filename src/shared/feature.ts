@@ -7,6 +7,9 @@ export const FEATURE_IDS = [
   'google-unhobble',
   'now-playing',
   'picture-in-picture',
+  'image-picker',
+  'focus-board',
+  'house-inspiration',
 ] as const;
 
 export type FeatureId = (typeof FEATURE_IDS)[number];
@@ -57,6 +60,21 @@ export const FEATURE_META: Readonly<Record<FeatureId, FeatureMeta>> = {
     id: 'picture-in-picture',
     label: 'Picture-in-Picture',
     description: 'Pop the largest video on the current tab into a floating PiP window.',
+  },
+  'image-picker': {
+    id: 'image-picker',
+    label: 'Image Picker',
+    description: 'Scan a page or link for all its images, then download the ones you want.',
+  },
+  'focus-board': {
+    id: 'focus-board',
+    label: 'Focus Board',
+    description: 'Three tasks a day, one that matters most, broken into steps with a timer.',
+  },
+  'house-inspiration': {
+    id: 'house-inspiration',
+    label: 'House Inspiration',
+    description: 'Right-click an image or link to add it to the house inspiration page.',
   },
 };
 

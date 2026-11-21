@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Focus session in progress</title>
+    <link rel="stylesheet" href="./blocked.css" />
+  </head>
+  <body>
+    <main class="wrap">
+      <p class="eyebrow" id="eyebrow">Blocked during focus</p>
+      <h1 class="clock" id="clock">—</h1>
+      <p class="sub" id="sub">Focus session in progress.</p>
+
+      <section class="card" id="card" hidden>
+        <p class="card-label">You said this was the one thing</p>
+        <h2 class="card-title" id="task-title"></h2>
+        <div class="card-progress" id="task-progress" hidden>
+          <span id="task-progress-label"></span>
+          <span class="bar"><span class="bar-fill" id="task-bar"></span></span>
+        </div>
+        <ul class="subs" id="task-subs"></ul>
+      </section>
+
+      <p class="foot" id="foot"></p>
+    </main>
+    <script type="module" src="./blocked.ts"></script>
+  </body>
+</html>

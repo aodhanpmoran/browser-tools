@@ -1,4 +1,5 @@
 import {
+  downloadExport,
   type EditableCookie,
   listAll,
   listForUrl,
@@ -61,7 +62,22 @@ export async function renderCookieEditorPanel(
   nukeSiteBtn.type = 'button';
   nukeSiteBtn.className = 'danger-button';
   nukeSiteBtn.textContent = 'Nuke cookies for this site';
-  siteActions.append(nukeSiteBtn);
+  const exportTxtBtn = document.createElement('button');
+  exportTxtBtn.type = 'button';
+  exportTxtBtn.className = 'primary-button';
+  exportTxtBtn.textContent = 'Export cookies.txt';
+  exportTxtBtn.title = 'Netscape format, for yt-dlp, curl and gallery-dl';
+  const exportJsonBtn = document.createElement('button');
+  exportJsonBtn.type = 'button';
+  exportJsonBtn.className = 'primary-button';
+  exportJsonBtn.textContent = 'Export JSON';
+  exportJsonBtn.title = 'EditThisCookie / Cookie-Editor format';
+  siteActions.append(exportTxtBtn, exportJsonBtn, nukeSiteBtn);
+
+  const exportNote = document.createElement('p');
+  exportNote.className = 'muted-note';
+  exportNote.textContent =
+    'Exports save to Downloads/browser-tools/cookies/. They hold your logged-in sessions, so treat them like passwords. Clear the Site URL and press Load to export every site.';
 
   const danger = document.createElement('details');
   danger.className = 'danger-zone';
@@ -90,7 +106,7 @@ export async function renderCookieEditorPanel(
   dangerBody.append(dangerHeader, dangerHelp, confirmInput, nukeAllBtn);
   danger.append(summary, dangerBody);
 
-  root.append(urlRow, tableContainer, siteActions, danger);
+  root.append(urlRow, tableContainer, siteActions, exportNote, danger);
 
   loadBtn.addEventListener('click', () => {
     state.url = input.value.trim();
@@ -107,6 +123,16 @@ export async function renderCookieEditorPanel(
     void nukeSite(state.url).then(reload);
   });
 
+  for (const [btn, format] of [
+    [exportTxtBtn, 'netscape'],
+    [exportJsonBtn, 'json'],
+  ] as const) {
+    btn.addEventListener('click', () => {
+      if (state.cookies.length === 0) return;
+      void downloadExport(state.cookies, exportScope(state.url), format);
+    });
+  }
+
   nukeAllBtn.addEventListener('click', () => {
     if (confirmInput.value.trim().toLowerCase() !== 'delete all') return;
     void nukeAll().then((n) => {
@@ -122,6 +148,8 @@ export async function renderCookieEditorPanel(
     state.cookies = state.url ? await listForUrl(state.url) : await listAll();
     nukeSiteBtn.textContent = `Nuke ${state.cookies.length} cookie${state.cookies.length === 1 ? '' : 's'} for this site`;
     nukeSiteBtn.disabled = state.cookies.length === 0;
+    exportTxtBtn.disabled = state.cookies.length === 0;
+    exportJsonBtn.disabled = state.cookies.length === 0;
     state.editing = null;
     state.draft = null;
     renderTable();
@@ -267,6 +295,15 @@ function formatExpires(cookie: EditableCookie): string {
   if (cookie.session || cookie.expirationDate === undefined) return 'session';
   const date = new Date(cookie.expirationDate * 1000);
   return date.toISOString().replace('T', ' ').slice(0, 16);
+}
+
+function exportScope(url: string): string {
+  if (!url) return 'all-sites';
+  try {
+    return new URL(url).hostname || 'cookies';
+  } catch {
+    return url;
+  }
 }
 
 function cookieKey(c: EditableCookie): string {

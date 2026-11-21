@@ -31,6 +31,28 @@ export interface NowPlayingSettings {
   audioCaptureSeconds: number;
 }
 
+export interface FocusBoardSettings {
+  /**
+   * Length of a focus run in minutes, remembered from the last time you moved
+   * the slider. 0 means an open-ended stopwatch.
+   */
+  sessionMinutes: number;
+  /** Clear completed tasks at the start of each local day. */
+  autoRollover: boolean;
+  /** Mirror the running timer on the toolbar badge. */
+  showBadge: boolean;
+  /** Block `blocklist` sites while a focus session is running. */
+  blockDuringFocus: boolean;
+  /** Hostnames to block. Normalised at use time, so free-form entry is fine. */
+  blocklist: string[];
+  /** Also divert chrome://extensions, chrome://settings and this options page. */
+  guardSettingsPages: boolean;
+  /** Read daily suggestions written by the desktop agent. */
+  suggestionsEnabled: boolean;
+  /** Path to the agent-written JSON. `~/` and bare relative paths are expanded. */
+  suggestionsPath: string;
+}
+
 export interface Settings {
   enabled: Record<FeatureId, boolean>;
   tabCleaner: TabCleanerSettings;
@@ -38,6 +60,7 @@ export interface Settings {
   newsFeedEradicator: NewsFeedEradicatorSettings;
   googleUnhobble: GoogleUnhobbleSettings;
   nowPlaying: NowPlayingSettings;
+  focusBoard: FocusBoardSettings;
 }
 
 const STORAGE_KEY = 'settings';
@@ -77,6 +100,28 @@ export const DEFAULT_SETTINGS: Settings = {
     acrKey: '',
     acrSecret: '',
     audioCaptureSeconds: 10,
+  },
+  focusBoard: {
+    sessionMinutes: 25,
+    autoRollover: true,
+    showBadge: true,
+    blockDuringFocus: true,
+    blocklist: [
+      'youtube.com',
+      'x.com',
+      'twitter.com',
+      'reddit.com',
+      'instagram.com',
+      'facebook.com',
+      'tiktok.com',
+      'news.ycombinator.com',
+      'linkedin.com',
+    ],
+    guardSettingsPages: true,
+    suggestionsEnabled: true,
+    // Absolute path, resolved once by the options panel's Detect button — a
+    // popup has no filesystem API to expand `~` with.
+    suggestionsPath: '',
   },
 };
 

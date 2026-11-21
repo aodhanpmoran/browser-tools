@@ -1,6 +1,6 @@
 import type { PanelContext, PopupPage } from '../../shared/panel';
 import { emptyNote, safeHost } from '../../shared/dom';
-import { listForUrl, nukeSite } from './operations';
+import { downloadExport, listForUrl, nukeSite } from './operations';
 
 export const cookieEditorPopupPage: PopupPage = {
   id: 'cookies',
@@ -47,7 +47,16 @@ async function renderCookies(container: HTMLElement, ctx: PanelContext): Promise
       return;
     void nukeSite(tab.url!).then(() => ctx.refresh());
   });
-  actions.append(editBtn, nukeBtn);
+  const exportBtn = document.createElement('button');
+  exportBtn.type = 'button';
+  exportBtn.className = 'secondary-button';
+  exportBtn.textContent = 'Export .txt';
+  exportBtn.title = 'Netscape cookies.txt, for yt-dlp, curl and gallery-dl';
+  exportBtn.disabled = cookies.length === 0;
+  exportBtn.addEventListener('click', () => {
+    void downloadExport(cookies, host, 'netscape');
+  });
+  actions.append(editBtn, exportBtn, nukeBtn);
 
   container.replaceChildren(head, actions);
 }

@@ -1,27 +1,5 @@
-:root {
-  color-scheme: light dark;
-  --bg: Canvas;
-  --fg: CanvasText;
-  --muted: color-mix(in srgb, CanvasText 55%, transparent);
-  --subtle: color-mix(in srgb, CanvasText 35%, transparent);
-  --border: color-mix(in srgb, CanvasText 14%, transparent);
-  --surface: color-mix(in srgb, CanvasText 6%, transparent);
-  --surface-hover: color-mix(in srgb, CanvasText 10%, transparent);
-  --nav-bg: color-mix(in srgb, CanvasText 4%, transparent);
-  --accent: AccentColor;
-  --accent-fade: color-mix(in srgb, AccentColor 18%, transparent);
-  --accent-fade-strong: color-mix(in srgb, AccentColor 35%, transparent);
-  --danger: #dc2626;
-  --ok: #16a34a;
-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
-  font-size: 13px;
-}
-
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+/* Tokens and reset are shared with the standalone Focus Board tab. */
+@import '../shared/tokens.css';
 
 body {
   width: 380px;
@@ -121,10 +99,6 @@ body {
 
 .section-head {
   margin-top: 16px;
-}
-
-.muted {
-  color: var(--muted);
 }
 
 /* ── Feature toggles ───────────────────────────────────── */
@@ -812,4 +786,64 @@ body {
 .toolbar-label {
   font-size: 10px;
   font-weight: 600;
+}
+
+/* ── Image Picker ──────────────────────────────────────── */
+.ip-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+.ip-scan-btn {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent, #4f8cff);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ip-scan-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.ip-or {
+  text-align: center;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ip-url-form {
+  display: flex;
+  gap: 8px;
+}
+
+.ip-url-input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--fg);
+  font-size: 13px;
+}
+
+.ip-hint {
+  font-size: 12px;
+  margin: 0;
+}
+
+
+.secondary-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }

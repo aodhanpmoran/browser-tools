@@ -13,6 +13,14 @@ export default defineManifest({
     default_title: 'Browser Tools',
   },
   options_page: 'src/options/index.html',
+  // Every new tab is the board. This cannot be toggled at runtime — Chrome reads
+  // it from the manifest at install time, so a settings switch could not turn it
+  // off. Turning Focus Board off leaves the page in place; it renders a way back
+  // in rather than a dead end. To drop the override entirely, delete this block
+  // and reload the extension.
+  chrome_url_overrides: {
+    newtab: 'src/features/focus-board/focus.html',
+  },
   background: {
     service_worker: 'src/background/service-worker.ts',
     type: 'module',
@@ -26,8 +34,28 @@ export default defineManifest({
     'webNavigation',
     'tabCapture',
     'scripting',
+    'downloads',
+    'declarativeNetRequest',
+    'contextMenus',
+    'nativeMessaging',
+    'notifications',
   ],
-  host_permissions: ['<all_urls>'],
+  // `file:///*` is not covered by <all_urls>; Focus Board needs it to read the
+  // agent-written suggestions file. Still gated behind the per-extension
+  // "Allow access to file URLs" toggle the user must tick once.
+  host_permissions: ['<all_urls>', 'file:///*'],
+  web_accessible_resources: [
+    {
+      resources: ['src/features/image-picker/grid.html'],
+      matches: ['<all_urls>'],
+    },
+    {
+      // declarativeNetRequest redirects blocked navigations here, so the page
+      // must be reachable from any origin.
+      resources: ['src/features/focus-board/blocked.html'],
+      matches: ['<all_urls>'],
+    },
+  ],
   content_scripts: [
     {
       matches: allHostPatterns(),

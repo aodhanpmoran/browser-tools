@@ -1,0 +1,33 @@
+/*
+ * Shared theme tokens and reset. Imported by every extension page so the popup
+ * and the standalone Focus Board tab cannot drift apart — they render the same
+ * components and must agree on what --accent means.
+ */
+:root {
+  color-scheme: light dark;
+  --bg: Canvas;
+  --fg: CanvasText;
+  --muted: color-mix(in srgb, CanvasText 55%, transparent);
+  --subtle: color-mix(in srgb, CanvasText 35%, transparent);
+  --border: color-mix(in srgb, CanvasText 14%, transparent);
+  --surface: color-mix(in srgb, CanvasText 6%, transparent);
+  --surface-hover: color-mix(in srgb, CanvasText 10%, transparent);
+  --nav-bg: color-mix(in srgb, CanvasText 4%, transparent);
+  --accent: AccentColor;
+  --accent-fade: color-mix(in srgb, AccentColor 18%, transparent);
+  --accent-fade-strong: color-mix(in srgb, AccentColor 35%, transparent);
+  --danger: #dc2626;
+  --ok: #16a34a;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 13px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+.muted {
+  color: var(--muted);
+}

@@ -20,6 +20,12 @@ import {
   pictureInPictureFeature,
   togglePip,
 } from '../features/picture-in-picture';
+import { imagePickerFeature } from '../features/image-picker';
+import { focusBoardFeature, focusBoardHandlers } from '../features/focus-board';
+import {
+  houseInspirationFeature,
+  onMenuClicked as onHouseInspoMenuClicked,
+} from '../features/house-inspiration';
 
 const REGISTRY: Readonly<Record<FeatureId, Feature>> = {
   'tab-cleaner': tabCleanerFeature,
@@ -30,6 +36,9 @@ const REGISTRY: Readonly<Record<FeatureId, Feature>> = {
   'google-unhobble': googleUnhobbleFeature,
   'now-playing': nowPlayingFeature,
   'picture-in-picture': pictureInPictureFeature,
+  'image-picker': imagePickerFeature,
+  'focus-board': focusBoardFeature,
+  'house-inspiration': houseInspirationFeature,
 };
 
 // --- Top-level synchronous listener registration -----------------------------
@@ -46,20 +55,32 @@ chrome.runtime.onStartup.addListener(() => {
   void handleStartup();
 });
 
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  onHouseInspoMenuClicked(info, tab);
+});
+
 chrome.alarms.onAlarm.addListener((alarm) => {
   void tabCleanerHandlers.onAlarm(alarm);
+  void focusBoardHandlers.onAlarm(alarm);
+});
+
+// The badge has to track timer start/stop immediately, not on the next minute tick.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.focusBoard) void focusBoardHandlers.onBoardChanged();
 });
 
 chrome.tabs.onCreated.addListener((tab) => {
   tabCleanerHandlers.onTabCreated(tab);
+  if (tab.id !== undefined) void focusBoardHandlers.onTabNavigated(tab.id, tab.url);
 });
 
 chrome.tabs.onActivated.addListener((info) => {
   tabCleanerHandlers.onTabActivated(info);
 });
 
-chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   tabCleanerHandlers.onTabUpdated(tabId, changeInfo);
+  void focusBoardHandlers.onTabNavigated(tabId, changeInfo.url ?? tab.url);
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
