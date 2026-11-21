@@ -46,10 +46,6 @@ export default defineManifest({
   host_permissions: ['<all_urls>', 'file:///*'],
   web_accessible_resources: [
     {
-      resources: ['src/features/image-picker/grid.html'],
-      matches: ['<all_urls>'],
-    },
-    {
       // declarativeNetRequest redirects blocked navigations here, so the page
       // must be reachable from any origin.
       resources: ['src/features/focus-board/blocked.html'],
