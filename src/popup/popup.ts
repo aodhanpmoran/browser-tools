@@ -47,14 +47,19 @@ const pageSlots: readonly PageSlot[] = [
 ];
 
 let activePage = 'home';
+/** Page ids rendered against the current context; cleared on every refresh. */
+const rendered = new Set<string>();
+let lastCtx: PanelContext | undefined;
+/** Local-storage keys the popup renders from. */
+const WATCHED_KEYS = ['settings', 'focusBoard', 'recentlyClosed', 'nowPlayingHistory'];
 
 optionsButton.addEventListener('click', () => chrome.runtime.openOptionsPage());
 
 renderNav();
 void render();
 
-chrome.storage.onChanged.addListener((_changes, area) => {
-  if (area === 'local') void render();
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && WATCHED_KEYS.some((k) => k in changes)) void render();
 });
 
 function renderNav(): void {
@@ -76,6 +81,7 @@ function renderNav(): void {
         for (const b of navEl.querySelectorAll('button')) {
           b.classList.toggle('active', b.dataset.page === slot.id);
         }
+        void renderPage(slot.id);
       });
       return btn;
     }),
@@ -90,12 +96,26 @@ async function render(): Promise<void> {
     refresh: () => void render(),
   };
 
+  lastCtx = ctx;
+  rendered.clear();
+
   renderFeatures(settings.enabled);
   await renderRecentlyClosed(homeExtrasEl, ctx);
+  await renderPage(activePage);
+}
 
-  for (const page of PAGES) {
-    const container = pagesHostEl.querySelector<HTMLElement>(`[data-panel="${page.id}"]`)!;
+/** Render a feature page once per context; the home page is rendered by render(). */
+async function renderPage(id: string): Promise<void> {
+  const page = PAGES.find((p) => p.id === id);
+  const ctx = lastCtx;
+  if (!page || !ctx || rendered.has(id)) return;
+  rendered.add(id);
+  const container = pagesHostEl.querySelector<HTMLElement>(`[data-panel="${id}"]`)!;
+  try {
     await page.render(container, ctx);
+  } catch (err) {
+    rendered.delete(id); // let the next visit try again
+    throw err;
   }
 }
 

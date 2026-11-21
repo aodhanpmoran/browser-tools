@@ -1,32 +1,24 @@
 import { FEATURE_IDS, FEATURE_META, type FeatureId } from '../shared/feature';
 import { getSettings, setFeatureEnabled } from '../shared/storage';
-import { renderNfeOptionsPanel } from '../features/news-feed-eradicator/options-panel';
-import { renderVideoSpeedOptionsPanel } from '../features/video-speed/options-panel';
-import { renderTabCleanerOptionsPanel } from '../features/tab-cleaner/options-panel';
-import { renderCookieEditorPanel } from '../features/cookie-editor/options-panel';
-import { renderRedirectTracerOptionsPanel } from '../features/redirect-tracer/options-panel';
-import { renderGoogleUnhobbleOptionsPanel } from '../features/google-unhobble/options-panel';
-import { renderNowPlayingOptionsPanel } from '../features/now-playing/options-panel';
-import { renderPictureInPictureOptionsPanel } from '../features/picture-in-picture/options-panel';
-import { renderImagePickerOptionsPanel } from '../features/image-picker/options-panel';
-import { renderFocusBoardOptionsPanel } from '../features/focus-board/options-panel';
-import { renderHouseInspirationOptionsPanel } from '../features/house-inspiration/options-panel';
 
 type OptionsPanelRenderer = (enabled: boolean) => Promise<HTMLElement> | HTMLElement;
 
-const PANELS: Readonly<Record<FeatureId, OptionsPanelRenderer>> = {
-  'tab-cleaner': renderTabCleanerOptionsPanel,
-  'cookie-editor': renderCookieEditorPanel,
-  'redirect-tracer': renderRedirectTracerOptionsPanel,
-  'video-speed': renderVideoSpeedOptionsPanel,
-  'news-feed-eradicator': renderNfeOptionsPanel,
-  'google-unhobble': renderGoogleUnhobbleOptionsPanel,
-  'now-playing': renderNowPlayingOptionsPanel,
-  'picture-in-picture': renderPictureInPictureOptionsPanel,
-  'image-picker': renderImagePickerOptionsPanel,
-  'focus-board': renderFocusBoardOptionsPanel,
-  'house-inspiration': renderHouseInspirationOptionsPanel,
+const PANELS: Readonly<Record<FeatureId, () => Promise<OptionsPanelRenderer>>> = {
+  'tab-cleaner': async () => (await import('../features/tab-cleaner/options-panel')).renderTabCleanerOptionsPanel,
+  'cookie-editor': async () => (await import('../features/cookie-editor/options-panel')).renderCookieEditorPanel,
+  'redirect-tracer': async () => (await import('../features/redirect-tracer/options-panel')).renderRedirectTracerOptionsPanel,
+  'video-speed': async () => (await import('../features/video-speed/options-panel')).renderVideoSpeedOptionsPanel,
+  'news-feed-eradicator': async () => (await import('../features/news-feed-eradicator/options-panel')).renderNfeOptionsPanel,
+  'google-unhobble': async () => (await import('../features/google-unhobble/options-panel')).renderGoogleUnhobbleOptionsPanel,
+  'now-playing': async () => (await import('../features/now-playing/options-panel')).renderNowPlayingOptionsPanel,
+  'picture-in-picture': async () => (await import('../features/picture-in-picture/options-panel')).renderPictureInPictureOptionsPanel,
+  'image-picker': async () => (await import('../features/image-picker/options-panel')).renderImagePickerOptionsPanel,
+  'focus-board': async () => (await import('../features/focus-board/options-panel')).renderFocusBoardOptionsPanel,
+  'house-inspiration': async () => (await import('../features/house-inspiration/options-panel')).renderHouseInspirationOptionsPanel,
 };
+
+/** Local-storage keys the options panels render from. */
+const WATCHED_KEYS = ['settings', 'focusBoard', 'recentlyClosed', 'nowPlayingHistory'];
 
 const navEl = document.querySelector<HTMLElement>('#feature-nav');
 const panelEl = document.querySelector<HTMLElement>('#feature-panel');
@@ -44,8 +36,8 @@ window.addEventListener('hashchange', () => {
   }
 });
 
-chrome.storage.onChanged.addListener((_changes, area) => {
-  if (area === 'local') void render();
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && WATCHED_KEYS.some((k) => k in changes)) void render();
 });
 
 void render();
@@ -92,7 +84,8 @@ async function renderPanel(id: FeatureId, enabled: boolean): Promise<void> {
 
   const toggle = featureToggle(id, enabled);
 
-  const details = await PANELS[id](enabled);
+  const renderDetails = await PANELS[id]();
+  const details = await renderDetails(enabled);
 
   panelEl!.replaceChildren(header, toggle, details);
 }

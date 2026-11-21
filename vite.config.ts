@@ -8,6 +8,8 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     target: 'esnext',
+    // Minimum Chrome is 111, which supports modulepreload natively.
+    modulePreload: { polyfill: false },
     rollupOptions: {
       input: {
         'image-picker-grid': 'src/features/image-picker/grid.html',
