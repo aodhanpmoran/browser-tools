@@ -13,12 +13,11 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@crxjs/vite-plugin": "^2.4.0",
+    "@crxjs/vite-plugin": "^2.7.1",
     "@types/chrome": "^0.1.40",
     "typescript": "^6.0.3",
-    "vite": "^8.0.9",
-    "vite-plugin-top-level-await": "^1.6.0",
-    "vitest": "^4.1.4"
+    "vite": "^8.3.8",
+    "vitest": "^4.1.12"
   },
   "license": "MIT",
   "author": "Aodhán P Moran"
