@@ -26,6 +26,7 @@ window.addEventListener('popstate', () => void apply());
 
 
 async function apply(): Promise<void> {
+  if (!chrome.runtime?.id) return; // orphaned after an extension reload
   const rule = findRuleForHost(location.hostname);
   if (!rule) return;
 

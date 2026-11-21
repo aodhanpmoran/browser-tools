@@ -23,6 +23,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 
 async function refreshState(): Promise<void> {
+  if (!chrome.runtime?.id) return; // orphaned after an extension reload
   const settings = await getSettings();
   state = {
     featureOn: settings.enabled['google-unhobble'],

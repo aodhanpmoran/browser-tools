@@ -12,10 +12,17 @@ function shouldTrack(target: EventTarget | null): boolean {
 
 function report(dirty: boolean): void {
   if (lastSent === dirty) return;
+  // After the extension reloads, this old copy keeps running in open tabs but
+  // has lost its connection; sendMessage then throws synchronously.
+  if (!chrome.runtime?.id) return;
   lastSent = dirty;
-  chrome.runtime
-    .sendMessage({ kind: 'tab-cleaner/dirty-input', payload: { dirty } })
-    .catch(() => {});
+  try {
+    chrome.runtime
+      .sendMessage({ kind: 'tab-cleaner/dirty-input', payload: { dirty } })
+      .catch(() => {});
+  } catch {
+    // Extension context invalidated.
+  }
 }
 
 for (const kind of DIRTY_EVENT_KINDS) {
