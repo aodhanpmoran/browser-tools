@@ -22,38 +22,56 @@ export async function getTrace(tabId: number): Promise<RedirectTrace> {
   return (result[key(tabId)] as RedirectTrace | undefined) ?? empty();
 }
 
+// Per-tab promise chain so concurrent hop/final/reset writes for one tab cannot
+// overwrite each other.
+const tabQueues = new Map<number, Promise<void>>();
+
+function enqueue(tabId: number, fn: () => Promise<void>): Promise<void> {
+  const run = (tabQueues.get(tabId) ?? Promise.resolve()).then(fn);
+  const tail = run.catch(() => undefined);
+  tabQueues.set(tabId, tail);
+  void tail.then(() => {
+    if (tabQueues.get(tabId) === tail) tabQueues.delete(tabId);
+  });
+  return run;
+}
+
 async function setTrace(tabId: number, trace: RedirectTrace): Promise<void> {
   await chrome.storage.session.set({ [key(tabId)]: trace });
 }
 
-export async function resetForTab(tabId: number): Promise<void> {
-  await setTrace(tabId, empty());
+export function resetForTab(tabId: number): Promise<void> {
+  return enqueue(tabId, () => setTrace(tabId, empty()));
 }
 
-export async function appendHop(
+export function appendHop(
   tabId: number,
   details: chrome.webRequest.OnBeforeRedirectDetails,
 ): Promise<void> {
-  const trace = await getTrace(tabId);
-  trace.chain.push({
-    url: details.url,
-    statusCode: details.statusCode,
-    statusLine: details.statusLine ?? '',
-    redirectUrl: details.redirectUrl,
+  return enqueue(tabId, async () => {
+    const trace = await getTrace(tabId);
+    trace.chain.push({
+      url: details.url,
+      statusCode: details.statusCode,
+      statusLine: details.statusLine ?? '',
+      redirectUrl: details.redirectUrl,
+    });
+    await setTrace(tabId, trace);
   });
-  await setTrace(tabId, trace);
 }
 
-export async function recordFinal(
+export function recordFinal(
   tabId: number,
   details: chrome.webRequest.OnCompletedDetails,
 ): Promise<void> {
-  const trace = await getTrace(tabId);
-  trace.finalUrl = details.url;
-  trace.finalStatus = details.statusCode;
-  await setTrace(tabId, trace);
+  return enqueue(tabId, async () => {
+    const trace = await getTrace(tabId);
+    trace.finalUrl = details.url;
+    trace.finalStatus = details.statusCode;
+    await setTrace(tabId, trace);
+  });
 }
 
-export async function clearTab(tabId: number): Promise<void> {
-  await chrome.storage.session.remove(key(tabId));
+export function clearTab(tabId: number): Promise<void> {
+  return enqueue(tabId, () => chrome.storage.session.remove(key(tabId)));
 }

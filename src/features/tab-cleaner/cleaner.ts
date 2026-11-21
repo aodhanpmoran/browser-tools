@@ -1,10 +1,10 @@
 import { forgetTab, getActivity } from './activity';
 import { isExcluded } from './exclusions';
 import { addClosed } from './recently-closed';
-import { getSettings } from '../../shared/storage';
+import { getSettingsCached } from '../../shared/storage';
 
 export async function runSweep(): Promise<void> {
-  const settings = await getSettings();
+  const settings = await getSettingsCached();
   if (!settings.enabled['tab-cleaner']) return;
 
   const { tabCleaner } = settings;
@@ -12,6 +12,8 @@ export async function runSweep(): Promise<void> {
   const now = Date.now();
 
   const activity = await getActivity();
+  // Nothing old enough to close: skip the (comparatively expensive) tabs.query.
+  if (!Object.values(activity).some((r) => now - r.lastActiveAt >= thresholdMs)) return;
   const tabs = await chrome.tabs.query({});
   const activeByWindow = new Map<number, number>();
   for (const t of tabs) {

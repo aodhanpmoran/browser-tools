@@ -60,18 +60,24 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
-  void tabCleanerHandlers.onAlarm(alarm);
-  void focusBoardHandlers.onAlarm(alarm);
+  tabCleanerHandlers.onAlarm(alarm).catch(console.error);
+  focusBoardHandlers.onAlarm(alarm).catch(console.error);
 });
 
 // The badge has to track timer start/stop immediately, not on the next minute tick.
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && changes.focusBoard) void focusBoardHandlers.onBoardChanged();
+  if (area !== 'local' || !changes.focusBoard) return;
+  // Only the timer drives the badge; task edits must not wake the handler.
+  const timerOf = (v: unknown): string =>
+    JSON.stringify((v as { timer?: unknown } | undefined)?.timer);
+  const oldTimer = timerOf(changes.focusBoard.oldValue);
+  const newTimer = timerOf(changes.focusBoard.newValue);
+  if (oldTimer !== newTimer) focusBoardHandlers.onBoardChanged().catch(console.error);
 });
 
 chrome.tabs.onCreated.addListener((tab) => {
   tabCleanerHandlers.onTabCreated(tab);
-  if (tab.id !== undefined) void focusBoardHandlers.onTabNavigated(tab.id, tab.url);
+  if (tab.id !== undefined) focusBoardHandlers.onTabNavigated(tab.id, tab.url).catch(console.error);
 });
 
 chrome.tabs.onActivated.addListener((info) => {
@@ -80,7 +86,7 @@ chrome.tabs.onActivated.addListener((info) => {
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   tabCleanerHandlers.onTabUpdated(tabId, changeInfo);
-  void focusBoardHandlers.onTabNavigated(tabId, changeInfo.url ?? tab.url);
+  focusBoardHandlers.onTabNavigated(tabId, changeInfo.url ?? tab.url).catch(console.error);
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
@@ -88,35 +94,39 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   redirectTracerHandlers.onTabRemoved(tabId);
 });
 
+// Unfiltered on purpose: a navigation to file:// or chrome:// must still reset
+// the previous site's chain. The handler does its cheap frame checks first.
 chrome.webNavigation.onBeforeNavigate.addListener((details) => {
-  void redirectTracerHandlers.onBeforeNavigate(details);
+  redirectTracerHandlers.onBeforeNavigate(details).catch(console.error);
 });
 
 chrome.webRequest.onBeforeRedirect.addListener(
   (details) => {
-    void redirectTracerHandlers.onBeforeRedirect(details);
+    redirectTracerHandlers.onBeforeRedirect(details).catch(console.error);
   },
   { urls: ['http://*/*', 'https://*/*'], types: ['main_frame'] },
 );
 
 chrome.webRequest.onCompleted.addListener(
   (details) => {
-    void redirectTracerHandlers.onCompleted(details);
+    redirectTracerHandlers.onCompleted(details).catch(console.error);
   },
   { urls: ['http://*/*', 'https://*/*'], types: ['main_frame'] },
 );
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (isDirtyInputMessage(message)) {
-    void tabCleanerHandlers.onDirtyInputMessage(message, sender);
+    tabCleanerHandlers.onDirtyInputMessage(message, sender).catch(console.error);
     return false;
   }
   if (isPipToggleMessage(message)) {
-    void togglePip(message.tabId).then(sendResponse);
+    togglePip(message.tabId).then(sendResponse, (e) => sendResponse({ error: String(e) }));
     return true;
   }
   if (isRedirectGetMessage(message)) {
-    void redirectTracerHandlers.getTrace(message.tabId).then(sendResponse);
+    redirectTracerHandlers
+      .getTrace(message.tabId)
+      .then(sendResponse, (e) => sendResponse({ error: String(e) }));
     return true;
   }
   return false;
@@ -126,7 +136,9 @@ onSettingsChanged((next, prev) => {
   for (const id of FEATURE_IDS) {
     if (next.enabled[id] === prev.enabled[id]) continue;
     const feature = REGISTRY[id];
-    const promise = next.enabled[id] ? feature.onEnable() : feature.onDisable();
+    const promise = next.enabled[id]
+      ? feature.onEnable().then(() => feature.onFreshEnable?.())
+      : feature.onDisable();
     promise.catch((err: unknown) => {
       console.error(`[browser-tools] ${id} transition failed`, err);
     });
@@ -140,6 +152,19 @@ async function handleInstalled(details: chrome.runtime.InstalledDetails): Promis
   for (const id of FEATURE_IDS) {
     await safeCall(id, 'onInstall', () => REGISTRY[id].onInstall());
   }
+  await applyEnabledState();
+}
+
+/**
+ * Apply feature state once per browser session. chrome.storage.session is wiped
+ * on browser restart, extension reload and disable/enable — the cases that need
+ * a re-apply — but survives the service worker's idle restarts, so this does not
+ * bring back the old reset-every-minute behaviour.
+ */
+async function applyOncePerSession(): Promise<void> {
+  const { booted } = await chrome.storage.session.get('booted');
+  if (booted) return;
+  await chrome.storage.session.set({ booted: true });
   await applyEnabledState();
 }
 
@@ -165,7 +190,4 @@ async function safeCall(id: FeatureId, stage: string, fn: () => Promise<void>): 
   }
 }
 
-// Run initial apply on every SW boot. This is safe to skip the await because
-// the listeners above are already attached; applyEnabledState only needs to
-// ensure alarms / activity seed / etc. are up to date.
-void applyEnabledState();
+void applyOncePerSession().catch(console.error);

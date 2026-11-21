@@ -54,7 +54,7 @@ async function createMenu(): Promise<void> {
     id: HOUSE_INSPO_MENU_ID,
     title: 'Add to House Inspiration',
     contexts: ['image', 'link', 'selection', 'page', 'video'],
-  });
+  }, () => void chrome.runtime.lastError);
 }
 
 async function removeMenu(): Promise<void> {

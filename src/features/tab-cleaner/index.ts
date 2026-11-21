@@ -1,7 +1,7 @@
 import type { Feature } from '../../shared/feature';
 import { forgetTab, resetAllTabTimestamps, seedExistingTabs, setDirtyInput, touchTab } from './activity';
 import { runSweep } from './cleaner';
-import { getSettings } from '../../shared/storage';
+import { getSettingsCached } from '../../shared/storage';
 
 export const TAB_CLEANER_ALARM = 'tab-cleaner/sweep';
 
@@ -11,30 +11,30 @@ export const TAB_CLEANER_ALARM = 'tab-cleaner/sweep';
 export const tabCleanerHandlers = {
   async onAlarm(alarm: chrome.alarms.Alarm): Promise<void> {
     if (alarm.name !== TAB_CLEANER_ALARM) return;
-    const settings = await getSettings();
+    const settings = await getSettingsCached();
     if (!settings.enabled['tab-cleaner']) return;
     await runSweep();
   },
 
   onTabCreated(tab: chrome.tabs.Tab): void {
     if (tab.id === undefined) return;
-    void touchTab(tab.id);
+    touchTab(tab.id).catch(console.error);
   },
 
   onTabActivated(info: chrome.tabs.OnActivatedInfo): void {
-    void touchTab(info.tabId);
+    touchTab(info.tabId).catch(console.error);
   },
 
   onTabUpdated(tabId: number, changeInfo: chrome.tabs.OnUpdatedInfo): void {
     if (changeInfo.url !== undefined) {
-      void touchTab(tabId, { hasDirtyInput: false });
+      touchTab(tabId, { hasDirtyInput: false }).catch(console.error);
     } else if (changeInfo.status === 'complete') {
-      void touchTab(tabId);
+      touchTab(tabId).catch(console.error);
     }
   },
 
   onTabRemoved(tabId: number): void {
-    void forgetTab(tabId);
+    forgetTab(tabId).catch(console.error);
   },
 
   async onDirtyInputMessage(
@@ -58,9 +58,14 @@ export const tabCleanerFeature: Feature = {
     if (!existing) {
       await chrome.alarms.create(TAB_CLEANER_ALARM, { periodInMinutes: 1 });
     }
-    // Fresh start: when the user flips the feature on after some time with it
-    // off, we don't want stale lastActiveAt timestamps to immediately close
-    // tabs that were simply idle while the feature was disabled.
+    // Only add records for tabs that have none (e.g. after a browser restart
+    // cleared session storage). Existing timestamps must survive: onEnable runs
+    // on every startup, and resetting here would stop idle tabs ever expiring.
+    await seedExistingTabs();
+  },
+  // Real off->on transition: stale timestamps from while the feature was off
+  // must not close tabs that were simply idle in the meantime.
+  onFreshEnable: async () => {
     await resetAllTabTimestamps();
   },
   onDisable: async () => {

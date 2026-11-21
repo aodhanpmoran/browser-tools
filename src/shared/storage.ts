@@ -131,6 +131,31 @@ export async function getSettings(): Promise<Settings> {
   return mergeWithDefaults(stored);
 }
 
+let settingsCache: Promise<Settings> | null = null;
+let cacheListening = false;
+
+/**
+ * Cached getSettings for the service worker's hot event handlers. The cache is
+ * dropped whenever the 'settings' key changes. Popup/options keep getSettings.
+ */
+export function getSettingsCached(): Promise<Settings> {
+  if (!cacheListening) {
+    cacheListening = true;
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName === 'local' && changes[STORAGE_KEY]) settingsCache = null;
+    });
+  }
+  if (!settingsCache) {
+    const p = getSettings();
+    settingsCache = p;
+    // Never cache a failure.
+    p.catch(() => {
+      if (settingsCache === p) settingsCache = null;
+    });
+  }
+  return settingsCache;
+}
+
 export async function setSettings(next: Settings): Promise<void> {
   await chrome.storage.local.set({ [STORAGE_KEY]: next });
 }

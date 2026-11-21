@@ -83,6 +83,8 @@ export interface Feature {
   onInstall(): Promise<void>;
   onEnable(): Promise<void>;
   onDisable(): Promise<void>;
+  /** Runs only on a real off->on settings transition, after onEnable (not on SW boot or startup). */
+  onFreshEnable?(): Promise<void>;
 }
 
 export function isFeatureId(value: unknown): value is FeatureId {
