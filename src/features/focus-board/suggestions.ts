@@ -238,6 +238,30 @@ export async function detectSuggestionsPath(
   return firstGuess;
 }
 
+const SUGGESTIONS_TTL_MS = 30_000;
+const suggestionsCache = new Map<string, { at: number; result: Promise<SuggestionsResult> }>();
+
+/**
+ * `loadSuggestions` memoised per URL for 30s, so the re-render that follows every
+ * tick, tick-box or storage event does not re-hit the (possibly slow) file://.
+ * Callers only ever read the result, so sharing one promise is safe.
+ */
+export function loadSuggestionsCached(
+  fileUrl: string,
+  now = Date.now(),
+): Promise<SuggestionsResult> {
+  const hit = suggestionsCache.get(fileUrl);
+  if (hit && now - hit.at < SUGGESTIONS_TTL_MS) return hit.result;
+  const result = loadSuggestions(fileUrl);
+  suggestionsCache.set(fileUrl, { at: now, result });
+  return result;
+}
+
+/** Test seam: forgets every cached read. */
+export function clearSuggestionsCache(): void {
+  suggestionsCache.clear();
+}
+
 /**
  * Reads and parses the suggestions file. Never throws — a missing file is the
  * normal state before the first agent run, not an error worth shouting about.

@@ -44,7 +44,7 @@ async function renderFocusBoard(container: HTMLElement, ctx: PanelContext): Prom
   expand.addEventListener('click', openFullBoard);
 
   const panel = await renderTimerPanel(board, ctx.settings, ctx.refresh);
-  const todos = await buildTodos(board, { mode: 'popup', settings: ctx.settings, refresh: ctx.refresh });
+  const todos = buildTodos(board, { mode: 'popup', settings: ctx.settings, refresh: ctx.refresh });
 
   root.append(expand, panel, todos);
   container.replaceChildren(root);

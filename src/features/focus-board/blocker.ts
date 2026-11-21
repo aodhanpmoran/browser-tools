@@ -99,11 +99,31 @@ export function isGuardedUrl(url: string, ownOptionsUrl: string): boolean {
  */
 export async function applyNetworkRules(sites: readonly string[]): Promise<void> {
   const existing = await chrome.declarativeNetRequest.getDynamicRules();
-  const removeRuleIds = existing
-    .filter((r) => r.id >= RULE_ID_BASE && r.id < RULE_ID_BASE + MAX_BLOCKED_SITES)
-    .map((r) => r.id);
+  const ours = existing.filter((r) => r.id >= RULE_ID_BASE && r.id < RULE_ID_BASE + MAX_BLOCKED_SITES);
+  const removeRuleIds = ours.map((r) => r.id);
   const addRules = buildRules(sites, chrome.runtime.getURL(BLOCK_PAGE));
+  // reconcile runs on every tick and board write; skip the update when nothing differs.
+  if (rulesEqual(ours, addRules)) return;
   await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds, addRules });
+}
+
+/** True when both lists hold the same rules (ids, priority, action and condition), in any order. */
+export function rulesEqual(
+  a: readonly chrome.declarativeNetRequest.Rule[],
+  b: readonly chrome.declarativeNetRequest.Rule[],
+): boolean {
+  if (a.length !== b.length) return false;
+  const key = (r: chrome.declarativeNetRequest.Rule): string =>
+    JSON.stringify([
+      r.id,
+      r.priority ?? 1,
+      r.action.type,
+      r.action.redirect?.url ?? null,
+      r.condition.urlFilter ?? null,
+      [...(r.condition.resourceTypes ?? [])].sort(),
+    ]);
+  const keys = new Set(a.map(key));
+  return b.every((r) => keys.has(key(r)));
 }
 
 export async function clearNetworkRules(): Promise<void> {

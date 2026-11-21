@@ -25,8 +25,10 @@ dateEl.textContent = new Date().toLocaleDateString([], {
 
 void render();
 
-chrome.storage.onChanged.addListener((_changes, area) => {
-  if (area === 'local') void render();
+chrome.storage.onChanged.addListener((changes, area) => {
+  // Only settings and the board feed this page; other local keys (history,
+  // other features' data) must not trigger a full re-render.
+  if (area === 'local' && (changes.settings || changes.focusBoard)) void render();
 });
 
 // A tab can sit open across midnight, so re-check the rollover when it comes back.
@@ -74,12 +76,11 @@ async function renderOnce(): Promise<void> {
   await rolloverIfNewDay(settings.focusBoard.autoRollover);
   const board = await getBoard();
 
-  const panel = await renderTimerPanel(board, settings, () => void render());
-  const todos = await buildTodos(board, {
-    mode: 'tab',
-    settings,
-    refresh: () => void render(),
-  });
+  // buildTodos is synchronous now (suggestions fill in later), so only the timer
+  // panel is awaited.
+  const refresh = (): void => void render();
+  const panel = await renderTimerPanel(board, settings, refresh);
+  const todos = buildTodos(board, { mode: 'tab', settings, refresh });
 
   timerEl.replaceChildren(panel);
   todosEl.replaceChildren(todos);

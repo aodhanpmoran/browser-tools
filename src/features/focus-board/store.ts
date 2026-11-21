@@ -10,6 +10,7 @@ import {
 } from './types';
 
 const KEY = 'focusBoard';
+const LOCK_NAME = 'bt-focusBoard';
 
 export async function getBoard(): Promise<BoardState> {
   const result = await chrome.storage.local.get(KEY);
@@ -73,6 +74,7 @@ async function setBoard(next: BoardState): Promise<BoardState> {
  * board and wrote it back over the timer that had just started.
  */
 let writeQueue: Promise<unknown> = Promise.resolve();
+// (Fallback only: used when navigator.locks is unavailable.)
 
 /**
  * Read-modify-write helper. Every mutation below goes through this, and every
@@ -81,14 +83,20 @@ let writeQueue: Promise<unknown> = Promise.resolve();
  * change what you are working on, and none of them should have to remember.
  */
 async function mutate(fn: (board: BoardState) => BoardState): Promise<BoardState> {
-  const run = writeQueue.then(async () => {
+  const body = async (): Promise<BoardState> => {
     const board = await getBoard();
     const next = settleCredit(fn(board), Date.now());
     // A mutation that changed nothing must not write: the write would still
     // land as a storage event and could stamp on a concurrent one from another
     // page. `fn` returns the board it was given when there is nothing to do.
     return next === board ? board : setBoard(next);
-  });
+  };
+  // A Web Lock serialises across the worker and every extension page, which the
+  // in-page queue cannot. It queues FIFO, so it also orders this page's own calls.
+  if (typeof navigator !== 'undefined' && navigator.locks) {
+    return navigator.locks.request(LOCK_NAME, body);
+  }
+  const run = writeQueue.then(body);
   writeQueue = run.catch(() => undefined);
   return run;
 }

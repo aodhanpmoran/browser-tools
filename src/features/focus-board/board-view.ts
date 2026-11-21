@@ -21,7 +21,7 @@ import {
 } from './store';
 import { countDone, formatDuration, taskSeconds } from './timer';
 import {
-  loadSuggestions,
+  loadSuggestionsCached,
   toFileUrl,
   visibleSuggestions,
   type Suggestion,
@@ -47,7 +47,7 @@ export interface BoardViewOptions {
 let refocus: string | undefined;
 
 /** Everything to the left of the timer: suggestions, Today, the add form, the backlog. */
-export async function buildTodos(board: BoardState, opts: BoardViewOptions): Promise<HTMLElement> {
+export function buildTodos(board: BoardState, opts: BoardViewOptions): HTMLElement {
   const today = todayTasks(board);
   const backlog = backlogTasks(board);
   const nowId = board.timer ? currentTask(board)?.id : undefined;
@@ -55,7 +55,9 @@ export async function buildTodos(board: BoardState, opts: BoardViewOptions): Pro
   const root = document.createElement('div');
   root.className = 'fb';
 
-  const suggestions = await suggestionsSection(board, opts);
+  // Rendered synchronously without it: the file:// read can take up to its 1.5s
+  // timeout, and nothing else on the page should wait for that.
+  const suggestions = suggestionsSlot(board, opts);
   if (suggestions) root.append(suggestions);
 
   root.append(sectionHeading('Today', `${today.filter((t) => !t.done).length}/${TODAY_CAP}`));
@@ -87,16 +89,25 @@ export function restoreFocus(container: HTMLElement): void {
  * Suggestions handed over by the desktop agent. Deliberately not auto-added:
  * you accept one, which is the moment you decide it earns a slot.
  */
-async function suggestionsSection(
-  board: BoardState,
-  opts: BoardViewOptions,
-): Promise<HTMLElement | null> {
+function suggestionsSlot(board: BoardState, opts: BoardViewOptions): HTMLElement | null {
   const { suggestionsEnabled, suggestionsPath } = opts.settings.focusBoard;
   if (!suggestionsEnabled || !suggestionsPath.trim()) return null;
 
+  // The slot holds the place in the DOM; it is filled, or removed, once the read
+  // lands. If the host re-rendered meanwhile the slot is detached and this is a no-op.
+  const slot = document.createElement('div');
+  slot.className = 'fb-suggest-slot';
   // The path is stored absolute — the options panel resolves it once, because
   // neither surface has a filesystem API to expand `~` with.
-  const result: SuggestionsResult = await loadSuggestions(toFileUrl(suggestionsPath));
+  void loadSuggestionsCached(toFileUrl(suggestionsPath)).then((result) => {
+    const section = suggestionsSection(board, result);
+    if (section) slot.replaceWith(section);
+    else slot.remove();
+  });
+  return slot;
+}
+
+function suggestionsSection(board: BoardState, result: SuggestionsResult): HTMLElement | null {
 
   const pending = visibleSuggestions(
     result.suggestions,
