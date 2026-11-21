@@ -842,3 +842,8 @@ body {
   margin: 0;
 }
 
+
+.secondary-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

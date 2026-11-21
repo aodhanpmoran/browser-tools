@@ -135,12 +135,34 @@ suggestions intact rather than replacing them with garbage.
 | Piece | Path |
 |---|---|
 | Script | `scripts/refresh-suggestions.sh` |
+| Tests | `tests/refresh-suggestions.test.sh` (stubs Claude; no network) |
 | launchd job | `~/Library/LaunchAgents/com.aodhanpmoran.browser-tools-suggestions.plist` |
 | Output | `~/.browser-tools/suggestions.json` |
 | Logs | `~/.browser-tools/refresh.log`, `launchd.{out,err}.log` |
+| Last failure | `~/.browser-tools/last-failure.txt` — whatever Claude said when a run failed |
 
 Runs daily at 07:00 local. launchd handles DST and fires on wake if the Mac was
 asleep at the scheduled moment.
+
+### Firing on wake is the hazard
+
+That last sentence is the whole problem. **Waking is exactly when the network is
+not up yet**, and Claude cannot refresh its OAuth token without one — it fails in
+about three seconds with `Not logged in · Please run /login`, which reads like a
+credentials problem and is not one. On 1 Aug that emptied the whole day: launchd
+fired at 07:02:46 for a 07:00 slot (i.e. on wake), the single attempt failed, and
+the board served 31 Jul's file all day.
+
+So the script waits for a route out before the first attempt, then retries on a
+60s / 5m / 15m backoff. A prose answer instead of JSON — what a downed connector
+produces — is retried on the same ladder, since it is a bad run rather than a bad
+file. Nothing downstream cares whether the file lands at 07:01 or 07:20.
+
+**When a run does fail, the log now says why.** It used to delete Claude's output
+on the failure path and log only `claude exited 1`; the actual reason had to be
+recovered from Claude's own session transcript under `~/.claude/projects/-/`
+(cwd is `/` under launchd, hence the `-`). The full text is kept at
+`last-failure.txt` and the first 400 characters go straight into `refresh.log`.
 
 ```sh
 launchctl list | grep browser-tools          # is it registered?

@@ -596,3 +596,8 @@ main h2 {
   opacity: 0.5;
   cursor: default;
 }
+
+.primary-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

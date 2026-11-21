@@ -1,3 +1,4 @@
+import { type ExportFormat, exportFilename, toJson, toNetscape } from './export';
 import { cookieScopeUrl } from './url';
 
 export interface EditableCookie {
@@ -76,6 +77,22 @@ export async function nukeAll(): Promise<number> {
   const cookies = await listAll();
   for (const cookie of cookies) await removeOne(cookie);
   return cookies.length;
+}
+
+// A data: URL rather than a blob: URL, because the popup that triggers this
+// may close before the download starts, and its blob URLs die with it.
+export async function downloadExport(
+  cookies: EditableCookie[],
+  scope: string,
+  format: ExportFormat,
+): Promise<void> {
+  const body = format === 'netscape' ? toNetscape(cookies) : toJson(cookies);
+  const mime = format === 'netscape' ? 'text/plain' : 'application/json';
+  await chrome.downloads.download({
+    url: `data:${mime};charset=utf-8,${encodeURIComponent(body)}`,
+    filename: exportFilename(scope, format),
+    conflictAction: 'uniquify',
+  });
 }
 
 function toEditable(c: chrome.cookies.Cookie): EditableCookie {

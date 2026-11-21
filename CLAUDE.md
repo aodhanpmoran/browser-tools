@@ -102,7 +102,15 @@ adding a feature means adding it there plus a settings shape in `src/shared/stor
   scheduled agent (`docs/suggestions-agent.md`), because the extension cannot reach
   Fathom or Gmail — those are desktop MCP connectors with no in-browser route. The agent
   must run **locally** (launchd + `scripts/refresh-suggestions.sh`); a cloud routine has
-  no access to this machine's filesystem and cannot write the file. Reading it needs
+  no access to this machine's filesystem and cannot write the file.
+  **That job fires on wake, which is precisely when there is no network yet** — Claude
+  then fails in ~3s with `Not logged in · Please run /login`, which looks like a
+  credentials problem and is not one. It cost the whole of 1 Aug's suggestions before
+  the script grew a network wait and a 60s/5m/15m retry ladder. If a refresh ever
+  fails again, read `~/.browser-tools/last-failure.txt` — the old script deleted
+  Claude's output on the failure path and logged only `claude exited 1`, so the reason
+  had to be dug out of Claude's own transcript under `~/.claude/projects/-/` (cwd is
+  `/` under launchd). Don't remove that capture. Reading the file needs
   `file:///*` in `host_permissions` **and** the per-extension "Allow access to file
   URLs" toggle. That toggle is granted automatically when the extension is launched
   with `--load-extension`, but **not** for a "Load unpacked" install — there only the
