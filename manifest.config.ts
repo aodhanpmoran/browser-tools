@@ -36,6 +36,9 @@ export default defineManifest({
     'scripting',
     'downloads',
     'declarativeNetRequest',
+    'contextMenus',
+    'nativeMessaging',
+    'notifications',
   ],
   // `file:///*` is not covered by <all_urls>; Focus Board needs it to read the
   // agent-written suggestions file. Still gated behind the per-extension

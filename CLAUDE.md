@@ -41,7 +41,7 @@ adding a feature means adding it there plus a settings shape in `src/shared/stor
 - `manifest.config.ts` — MV3 manifest built with `@crxjs/vite-plugin`'s
   `defineManifest`. Content script matches/permissions live here.
 
-## Features (10)
+## Features (11)
 
 | Feature | Dir | Notes |
 |---|---|---|
@@ -54,6 +54,7 @@ adding a feature means adding it there plus a settings shape in `src/shared/stor
 | Now Playing | `now-playing` | MediaSession/DOM/title detection, optional ACRCloud audio-fingerprint fallback, local history |
 | Picture-in-Picture | `picture-in-picture` | one-click pop-out of largest `<video>` |
 | Image Picker | `image-picker` | scan page/link for images, pick and download |
+| House Inspiration | `house-inspiration` | right-click menu item; sends the image/link/text to the native host `com.castcraft.house_inspo` (`~/.agents/tools/house-inspo-chrome/host.py`), which starts a Claude chat in Orca |
 | Focus Board | `focus-board` | Basecamp-ish to-dos: hard cap of 3 for Today, one starred "The One", subtasks, a standalone focus timer, site blocking while a session runs, daily agent suggestions. Two surfaces — the popup panel and a full-window tab (`focus.html`) |
 
 ## Gotchas

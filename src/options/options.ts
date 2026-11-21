@@ -10,6 +10,7 @@ import { renderNowPlayingOptionsPanel } from '../features/now-playing/options-pa
 import { renderPictureInPictureOptionsPanel } from '../features/picture-in-picture/options-panel';
 import { renderImagePickerOptionsPanel } from '../features/image-picker/options-panel';
 import { renderFocusBoardOptionsPanel } from '../features/focus-board/options-panel';
+import { renderHouseInspirationOptionsPanel } from '../features/house-inspiration/options-panel';
 
 type OptionsPanelRenderer = (enabled: boolean) => Promise<HTMLElement> | HTMLElement;
 
@@ -24,6 +25,7 @@ const PANELS: Readonly<Record<FeatureId, OptionsPanelRenderer>> = {
   'picture-in-picture': renderPictureInPictureOptionsPanel,
   'image-picker': renderImagePickerOptionsPanel,
   'focus-board': renderFocusBoardOptionsPanel,
+  'house-inspiration': renderHouseInspirationOptionsPanel,
 };
 
 const navEl = document.querySelector<HTMLElement>('#feature-nav');

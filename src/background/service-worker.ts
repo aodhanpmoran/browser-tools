@@ -22,6 +22,10 @@ import {
 } from '../features/picture-in-picture';
 import { imagePickerFeature } from '../features/image-picker';
 import { focusBoardFeature, focusBoardHandlers } from '../features/focus-board';
+import {
+  houseInspirationFeature,
+  onMenuClicked as onHouseInspoMenuClicked,
+} from '../features/house-inspiration';
 
 const REGISTRY: Readonly<Record<FeatureId, Feature>> = {
   'tab-cleaner': tabCleanerFeature,
@@ -34,6 +38,7 @@ const REGISTRY: Readonly<Record<FeatureId, Feature>> = {
   'picture-in-picture': pictureInPictureFeature,
   'image-picker': imagePickerFeature,
   'focus-board': focusBoardFeature,
+  'house-inspiration': houseInspirationFeature,
 };
 
 // --- Top-level synchronous listener registration -----------------------------
@@ -48,6 +53,10 @@ chrome.runtime.onInstalled.addListener((details) => {
 
 chrome.runtime.onStartup.addListener(() => {
   void handleStartup();
+});
+
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  onHouseInspoMenuClicked(info, tab);
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
